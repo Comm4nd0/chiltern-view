@@ -5,6 +5,9 @@ Smallholding tracker front end. Three features:
 - **What needs doing** — care tasks ranked by overdue-ness, with one-tap "Done".
 - **Potato timeline** — each planting shown as a growth-stage timeline with a progress bar.
 - **Egg log** — a quick counter for today's eggs plus week/month/all-time totals.
+- **Reminders** — on-device notifications (morning digest + per-task due-date
+  pings) for the person this phone belongs to. Set up in Settings → People (mark
+  "me") → Reminders. No cloud service required.
 
 ## Run
 
@@ -34,7 +37,8 @@ lib/
   config.dart                # API base URL (persisted via shared_preferences)
   theme.dart                 # Material 3 theme + status colours
   api/api_client.dart        # typed HTTP client over the DRF API
-  models/                    # Animal, CareTask, EggRecord, EggSummary, PotatoPlanting, PotatoStage
+  models/                    # Animal, Person, CareTask, EggRecord, EggSummary, PotatoPlanting, PotatoStage
+  services/                  # notification_service.dart — schedules on-device reminders
   screens/                   # dashboard, potato_timeline, egg_log, settings
   widgets/                   # CareTaskCard, PotatoTimelineCard, AsyncView
 test/widget_test.dart        # unit tests for model parsing / labels

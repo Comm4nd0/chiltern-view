@@ -5,6 +5,7 @@ import '../config.dart';
 import '../models/animal.dart';
 import '../models/care_task.dart';
 import '../models/person.dart';
+import '../services/notification_service.dart';
 import '../widgets/async_view.dart';
 import '../widgets/care_task_card.dart';
 
@@ -60,6 +61,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         SnackBar(content: Text('Marked "${task.name}" done')),
       );
       _refresh();
+      syncReminders(_api); // due date moved — refresh scheduled reminders
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
@@ -75,6 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (created == true) {
       _loadPeople();
       _refresh();
+      syncReminders(_api); // new task may need a reminder
     }
   }
 

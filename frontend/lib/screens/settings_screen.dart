@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../config.dart';
 import '../models/person.dart';
+import '../services/notification_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,11 +20,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late Future<List<Person>> _people;
   int? _myPersonId;
   bool _addingPerson = false;
+  bool _remindersEnabled = true;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
 
   @override
   void initState() {
     super.initState();
     _myPersonId = AppConfig.myPersonId;
+    _remindersEnabled = AppConfig.remindersEnabled;
+    _reminderTime = TimeOfDay(hour: AppConfig.reminderHour, minute: AppConfig.reminderMinute);
     _people = _api.people();
   }
 
@@ -65,6 +70,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _setMe(int? id) async {
     await AppConfig.setMyPersonId(id);
     setState(() => _myPersonId = id);
+    await syncReminders(_api); // reminders follow the device's person
+  }
+
+  Future<void> _toggleReminders(bool value) async {
+    setState(() => _remindersEnabled = value);
+    await AppConfig.setRemindersEnabled(value);
+    if (value) await NotificationService.instance.requestPermissions();
+    await syncReminders(_api);
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(context: context, initialTime: _reminderTime);
+    if (picked == null) return;
+    setState(() => _reminderTime = picked);
+    await AppConfig.setReminderTime(picked.hour, picked.minute);
+    await syncReminders(_api);
   }
 
   Future<void> _confirmDelete(Person person) async {
@@ -189,6 +210,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
           ),
+          const Divider(height: 32),
+          Text('Reminders', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            "On-device reminders for your tasks: a morning digest plus a ping on "
+            "each task's due date. Mark which person is you (above) so this "
+            'device knows whose tasks to remind you about.',
+            style: theme.textTheme.bodySmall,
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Task reminders'),
+            value: _remindersEnabled,
+            onChanged: _toggleReminders,
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            enabled: _remindersEnabled,
+            leading: const Icon(Icons.schedule),
+            title: const Text('Reminder time'),
+            subtitle: Text(_reminderTime.format(context)),
+            trailing: const Icon(Icons.edit_outlined),
+            onTap: _remindersEnabled ? _pickTime : null,
+          ),
+          if (_remindersEnabled && _myPersonId == null)
+            Card(
+              color: theme.colorScheme.errorContainer,
+              child: const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  "Pick which person is you above — otherwise reminders can't be "
+                  'scheduled on this device.',
+                ),
+              ),
+            ),
         ],
       ),
     );

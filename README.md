@@ -89,18 +89,48 @@ flutter run            # or: flutter run -d chrome / -d windows
 Set the API address in-app (gear icon → Settings) — e.g. `http://luma001:8000/api`.
 See [frontend/README.md](frontend/README.md) for per-platform URLs.
 
+## Reminders (on-device)
+
+Each phone shows local notifications reminding **its** person of their tasks —
+no cloud, no Firebase, no Apple Developer account needed for the notifications.
+Because care tasks recur on a fixed interval, the app computes upcoming due dates
+and registers reminders with the OS, so they fire even when the app is closed.
+
+- **Morning digest** — a daily summary of what's due/overdue for you.
+- **Per-task ping** — a reminder on each task's due date.
+
+Per phone: **Settings → People**, mark which person is *you*, then under
+**Reminders** turn them on and pick a time. Reminders cover a rolling 14-day
+window and refresh whenever the app opens or you add/complete a task. Only tasks
+assigned to that phone's person generate reminders. Times use Europe/London (set
+in [notification_service.dart](frontend/lib/services/notification_service.dart)).
+
+### Installing on iPhone
+
+A self-built Flutter app isn't on the App Store, so putting it on an iPhone needs
+a Mac with Xcode:
+
+- **Free Apple ID** — installs, but the signature **expires after 7 days** and the
+  app stops opening until re-signed.
+- **Apple Developer account ($99/yr)** — sign for a year and push to both phones
+  via **TestFlight** (the practical option for two phones).
+
+The local notifications need no paid account — only the install method does.
+
 ## Verification status
 
 - Backend: migrations generated, `manage.py check` clean, 13/13 API smoke checks
   passed (overdue ranking, task completion, egg counter, potato stages).
 - Frontend: `flutter analyze` clean, `flutter test` passing.
+- Reminders: Dart layer verified (analyze + tests). The iOS/Android **native build
+  wasn't compiled here** (no Mac; Windows can't build iOS, and plugin builds need
+  Developer Mode) — the native config follows the flutter_local_notifications docs.
 - The Docker **image build** wasn't run here (Docker daemon wasn't started on the
   dev machine); `docker compose up --build` is expected to work on Luma001.
 
 ## Notes
 
-- `git init` if you want version control — `.gitignore` and `.gitattributes`
-  (which keeps `entrypoint.sh` LF on Windows) are already in place.
+- Source is on GitHub: <https://github.com/Comm4nd0/chiltern-view>.
 - The Flutter UI logic (overdue ranking, potato stages, egg counter) mirrors the
   backend's computed fields and is structured to fold in your React prototype's
   exact logic when you share it.
