@@ -64,10 +64,11 @@ them.**
   (zero-downtime). Afterwards, verify the existing sites still serve.
 - DNS: `chilternview.lumatechsolutions.co.uk` must A-record to `178.104.29.66`
   for Caddy to issue HTTPS.
-- **Security:** the app has no login. Once it's reachable on the public domain,
-  anyone with the URL can read/write the data. Consider a Caddy `basic_auth`
-  gate (which would also require sending those credentials from the web and
-  Flutter clients).
+- **Security:** the app has no login and is now internet-facing via Caddy, so
+  anyone with the URL can read/write the data. **Decision: left open for now;
+  proper per-user authentication is a planned future task** (e.g. DRF token auth /
+  accounts, linking the `Person` records to `auth.User`) across backend + web +
+  Flutter — keep the two clients at parity.
 
 ## Conventions
 - Backend is no-login (trusted LAN; **now also internet-facing via Caddy** — see
