@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api/api_client.dart';
 import 'config.dart';
+import 'screens/animals_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/egg_log_screen.dart';
 import 'screens/overview_screen.dart';
@@ -47,6 +48,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     'What needs doing',
     'Potato timeline',
     'Egg log',
+    'Animals',
   ];
 
   late final List<Widget> _screens = [
@@ -54,6 +56,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     const DashboardScreen(),
     const PotatoTimelineScreen(),
     const EggLogScreen(),
+    const AnimalsScreen(),
   ];
 
   @override
@@ -124,6 +127,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
             icon: Icon(Icons.egg_outlined),
             selectedIcon: Icon(Icons.egg),
             label: 'Eggs',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.pets_outlined),
+            selectedIcon: Icon(Icons.pets),
+            label: 'Animals',
           ),
         ],
       ),

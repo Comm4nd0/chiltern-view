@@ -184,36 +184,39 @@ class _OverviewScreenState extends State<OverviewScreen> {
   Widget _animals(BuildContext context, Overview o) {
     final primary = Theme.of(context).colorScheme.primary;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.pets, color: primary),
-                const SizedBox(width: 8),
-                Text('Animals', style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
-                Text('${o.animalsTotal}', style: Theme.of(context).textTheme.titleLarge),
-              ],
-            ),
-            const SizedBox(height: 8),
-            if (o.bySpecies.isEmpty)
-              Text('none yet', style: Theme.of(context).textTheme.bodyMedium)
-            else
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+      child: InkWell(
+        onTap: () => widget.onOpenTab(4),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  for (final e in o.bySpecies.entries)
-                    Chip(
-                      label: Text('${e.key}: ${e.value}'),
-                      visualDensity: VisualDensity.compact,
-                    ),
+                  Icon(Icons.pets, color: primary),
+                  const SizedBox(width: 8),
+                  Text('Animals', style: Theme.of(context).textTheme.titleLarge),
+                  const Spacer(),
+                  Text('${o.animalsTotal}', style: Theme.of(context).textTheme.titleLarge),
                 ],
               ),
-          ],
+              const SizedBox(height: 8),
+              if (o.bySpecies.isEmpty)
+                Text('none yet', style: Theme.of(context).textTheme.bodyMedium)
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final e in o.bySpecies.entries)
+                      Chip(
+                        label: Text('${e.key}: ${e.value}'),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );

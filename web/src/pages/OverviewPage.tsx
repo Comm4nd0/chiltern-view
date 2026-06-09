@@ -159,26 +159,28 @@ export default function OverviewPage() {
 
           {/* Animals */}
           <Card>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                <PetsIcon color="primary" />
-                <Typography variant="h6" sx={{ flex: 1 }}>
-                  Animals
-                </Typography>
-                <Typography variant="h6">{data.animals.total}</Typography>
-              </Stack>
-              {Object.keys(data.animals.by_species).length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  none yet
-                </Typography>
-              ) : (
-                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                  {Object.entries(data.animals.by_species).map(([species, count]) => (
-                    <Chip key={species} label={`${species}: ${count}`} size="small" />
-                  ))}
+            <CardActionArea onClick={() => navigate('/animals')}>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
+                  <PetsIcon color="primary" />
+                  <Typography variant="h6" sx={{ flex: 1 }}>
+                    Animals
+                  </Typography>
+                  <Typography variant="h6">{data.animals.total}</Typography>
                 </Stack>
-              )}
-            </CardContent>
+                {Object.keys(data.animals.by_species).length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    none yet
+                  </Typography>
+                ) : (
+                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                    {Object.entries(data.animals.by_species).map(([species, count]) => (
+                      <Chip key={species} label={`${species}: ${count}`} size="small" />
+                    ))}
+                  </Stack>
+                )}
+              </CardContent>
+            </CardActionArea>
           </Card>
         </Stack>
       )}

@@ -8,6 +8,7 @@ export interface Animal {
   name: string
   species: string
   species_display: string
+  breed: string
 }
 
 export interface CareTask {

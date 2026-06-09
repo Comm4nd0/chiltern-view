@@ -128,6 +128,25 @@ class ApiClient {
     return _decodeList(res).map((e) => Animal.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  Future<Animal> createAnimal({
+    required String name,
+    required String species,
+    String breed = '',
+  }) async {
+    final res = await _client.post(
+      _uri('/animals/'),
+      headers: _jsonHeaders,
+      body: jsonEncode({'name': name, 'species': species, 'breed': breed}),
+    );
+    _check(res);
+    return Animal.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteAnimal(int id) async {
+    final res = await _client.delete(_uri('/animals/$id/'));
+    _check(res);
+  }
+
   // --- Potatoes -----------------------------------------------------------
   Future<List<PotatoPlanting>> potatoTimeline({String show = 'growing'}) async {
     final res = await _client.get(_uri('/potato-plantings/timeline/', {'show': show}));

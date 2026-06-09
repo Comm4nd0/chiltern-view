@@ -70,6 +70,9 @@ export const api = {
 
   animals: () =>
     request<unknown>('/animals/?active=true&ordering=name').then(decodeList<Animal>),
+  createAnimal: (input: { name: string; species: string; breed?: string }) =>
+    request<Animal>('/animals/', { method: 'POST', body: JSON.stringify(input) }),
+  deleteAnimal: (id: number) => request<void>(`/animals/${id}/`, { method: 'DELETE' }),
 
   potatoTimeline: (show = 'growing') =>
     request<unknown>(`/potato-plantings/timeline/?show=${show}`).then(

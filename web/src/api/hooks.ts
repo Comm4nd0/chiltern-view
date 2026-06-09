@@ -26,6 +26,28 @@ export function useAnimals() {
   return useQuery({ queryKey: keys.animals, queryFn: api.animals })
 }
 
+export function useCreateAnimal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.createAnimal,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.animals })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
+export function useDeleteAnimal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.deleteAnimal(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.animals })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
 export function usePotatoTimeline(show = 'growing') {
   return useQuery({ queryKey: keys.potatoes(show), queryFn: () => api.potatoTimeline(show) })
 }
