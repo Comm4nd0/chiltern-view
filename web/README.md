@@ -18,6 +18,13 @@ npm run dev        # http://localhost:5173, proxies /api -> http://localhost:800
 Run the backend too (`docker compose up db backend`, or `manage.py runserver`) so
 the proxy has something to talk to.
 
+To point the dev server at a different backend (e.g. the live API), set
+`PROXY_TARGET` in a git-ignored `web/.env.local`, then restart `npm run dev`:
+
+```
+PROXY_TARGET=https://chilternview.lumatechsolutions.co.uk
+```
+
 ## Check
 
 ```bash
