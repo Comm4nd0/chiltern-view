@@ -5,11 +5,17 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../models/crop.dart';
 
 /// A crop rendered as a horizontal growth timeline with the current stage
-/// highlighted and a progress bar towards estimated harvest.
+/// highlighted and a progress bar towards estimated harvest. Tapping the card
+/// edits the planting; growing crops get a harvest shortcut.
 class CropCard extends StatelessWidget {
   final Crop crop;
+  final VoidCallback? onTap;
+  final VoidCallback? onHarvest;
 
-  const CropCard({super.key, required this.crop});
+  const CropCard({super.key, required this.crop, this.onTap, this.onHarvest});
+
+  String _kg(double value) =>
+      value == value.roundToDouble() ? value.toStringAsFixed(0) : '$value';
 
   @override
   Widget build(BuildContext context) {
@@ -17,50 +23,72 @@ class CropCard extends StatelessWidget {
     final dateFmt = DateFormat('d MMM');
 
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(PhosphorIcons.plant(PhosphorIconsStyle.fill),
-                    size: 18, color: const Color(0xFF34C759)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(crop.cropLabel, style: theme.textTheme.titleMedium),
-                ),
-                if (crop.variety.isNotEmpty)
-                  Chip(
-                    label: Text(crop.variety),
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(PhosphorIcons.plant(PhosphorIconsStyle.fill),
+                      size: 18, color: const Color(0xFF34C759)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(crop.cropLabel, style: theme.textTheme.titleMedium),
                   ),
-              ],
-            ),
-            if (crop.bed.isNotEmpty) Text(crop.bed, style: theme.textTheme.bodySmall),
-            const SizedBox(height: 12),
-            _StageStrip(crop: crop),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(value: crop.progress, minHeight: 8),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Planted ${dateFmt.format(crop.plantedOn)}',
-                    style: theme.textTheme.bodySmall),
-                Text(
-                  crop.isHarvested
-                      ? 'Harvested'
-                      : 'Harvest ~ ${dateFmt.format(crop.estimatedHarvest)}',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ],
+                  if (crop.variety.isNotEmpty)
+                    Flexible(
+                      child: Chip(
+                        label: Text(crop.variety, overflow: TextOverflow.ellipsis),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  if (crop.isHarvested && crop.yieldKg != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Chip(
+                        label: Text('${_kg(crop.yieldKg!)} kg'),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  if (!crop.isHarvested && onHarvest != null)
+                    IconButton(
+                      onPressed: onHarvest,
+                      tooltip: 'Record harvest',
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(PhosphorIcons.basket(), size: 20),
+                    ),
+                ],
+              ),
+              if (crop.bed.isNotEmpty) Text(crop.bed, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 12),
+              _StageStrip(crop: crop),
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: LinearProgressIndicator(value: crop.progress, minHeight: 8),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Planted ${dateFmt.format(crop.plantedOn)}',
+                      style: theme.textTheme.bodySmall),
+                  Text(
+                    crop.isHarvested
+                        ? 'Harvested ${dateFmt.format(crop.harvestedOn!)}'
+                        : 'Harvest ~ ${dateFmt.format(crop.estimatedHarvest)}',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

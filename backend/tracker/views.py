@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.db.models import F, Sum
 from django.utils import timezone
@@ -8,6 +9,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from .care_sync import close_crop_tasks, resync_crop_tasks
 from .crops import catalog_list
 from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
 from .serializers import (
@@ -218,3 +220,46 @@ class CropViewSet(viewsets.ModelViewSet):
             crops = crops.filter(harvested_on__isnull=True)
         serializer = self.get_serializer(crops, many=True)
         return Response(serializer.data)
+
+    @action(detail=True, methods=["post"])
+    def harvest(self, request, pk=None):
+        """Mark a crop harvested and retire its auto reminders.
+
+        Optional body: {"date": "YYYY-MM-DD", "yield_kg": 12.5, "note": "..."}.
+        This is the canonical way to finish a crop — completing the auto
+        "Harvest ..." to-do ticks the task off but does not set harvested_on.
+        """
+        crop = self.get_object()
+        crop.harvested_on = parse_date(request.data.get("date", "") or "") or timezone.localdate()
+        raw_yield = request.data.get("yield_kg")
+        if raw_yield not in (None, ""):
+            try:
+                crop.yield_kg = Decimal(str(raw_yield))
+            except InvalidOperation:
+                return Response(
+                    {"detail": "yield_kg must be a number."}, status=status.HTTP_400_BAD_REQUEST
+                )
+        note = (request.data.get("note") or "").strip()
+        if note:
+            crop.notes = f"{crop.notes}\n{note}".strip()
+        crop.save()
+        close_crop_tasks(crop)
+        summary = f"Harvested {crop.crop_label}"
+        if crop.bed:
+            summary += f" ({crop.bed})"
+        if crop.yield_kg is not None:
+            summary += f" — {crop.yield_kg} kg"
+        if note:
+            summary += f". {note}"
+        LogEntry.objects.create(
+            entry_type=LogEntry.EntryType.GENERAL,
+            note=summary,
+            occurred_on=crop.harvested_on,
+        )
+        return Response(self.get_serializer(crop).data)
+
+    def perform_update(self, serializer):
+        """Keep the auto reminders in step when a crop is edited — dates moved,
+        a harvest recorded via PATCH, or a harvest undone."""
+        crop = serializer.save()
+        resync_crop_tasks(crop)

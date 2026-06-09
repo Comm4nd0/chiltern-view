@@ -1,21 +1,50 @@
-import { Box, Card, CardContent, Chip, LinearProgress, Stack, Typography } from '@mui/material'
-import { Plant, CheckCircle, Circle } from '@phosphor-icons/react'
+import { Box, Button, Card, CardContent, Chip, LinearProgress, Stack, Typography } from '@mui/material'
+import { Plant, CheckCircle, Circle, Basket } from '@phosphor-icons/react'
 import type { Crop } from '../api/types'
 import { fmtDate } from '../format'
 
-export default function CropCard({ crop }: { crop: Crop }) {
+export default function CropCard({
+  crop,
+  onEdit,
+  onHarvest,
+}: {
+  crop: Crop
+  onEdit?: () => void
+  onHarvest?: () => void
+}) {
   const labels = crop.stages.map((s) => s.label)
   const currentIndex = labels.indexOf(crop.current_stage)
 
   return (
     <Card>
-      <CardContent>
+      <CardContent
+        sx={{ cursor: onEdit ? 'pointer' : 'default' }}
+        onClick={onEdit}
+        role={onEdit ? 'button' : undefined}
+        aria-label={onEdit ? `Edit ${crop.crop_label}` : undefined}
+      >
         <Stack direction="row" alignItems="center" spacing={1}>
           <Plant size={18} weight="fill" color="#34C759" />
           <Typography variant="subtitle1" fontWeight={600} sx={{ flex: 1 }}>
             {crop.crop_label}
           </Typography>
           {crop.variety && <Chip label={crop.variety} size="small" />}
+          {crop.harvested_on && crop.yield_kg != null && (
+            <Chip label={`${Number(crop.yield_kg)} kg`} size="small" color="success" />
+          )}
+          {!crop.harvested_on && onHarvest && (
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<Basket size={16} />}
+              onClick={(e) => {
+                e.stopPropagation()
+                onHarvest()
+              }}
+            >
+              Harvest
+            </Button>
+          )}
         </Stack>
         {crop.bed && (
           <Typography variant="body2" color="text.secondary">
@@ -60,7 +89,9 @@ export default function CropCard({ crop }: { crop: Crop }) {
             Planted {fmtDate(crop.planted_on)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {crop.harvested_on ? 'Harvested' : `Harvest ~ ${fmtDate(crop.estimated_harvest)}`}
+            {crop.harvested_on
+              ? `Harvested ${fmtDate(crop.harvested_on)}`
+              : `Harvest ~ ${fmtDate(crop.estimated_harvest)}`}
           </Typography>
         </Stack>
       </CardContent>

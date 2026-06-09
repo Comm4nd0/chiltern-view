@@ -5,10 +5,11 @@ that kind of animal/crop are created as CareTasks. Creation is idempotent: each
 task carries a stable ``auto_key`` and is made with ``get_or_create``, so existing
 reminders are never duplicated (e.g. adding a second hen reuses the flock routine).
 """
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 
 from .care_knowledge import animal_care_specs, crop_care_specs
+from .care_sync import delete_crop_tasks
 from .models import Animal, CareTask, Crop
 
 
@@ -40,3 +41,9 @@ def create_animal_care(sender, instance, created, **kwargs):
 def create_crop_care(sender, instance, created, **kwargs):
     if created and not instance.harvested_on:
         apply_care_specs(crop_care_specs(instance))
+
+
+@receiver(pre_delete, sender=Crop, dispatch_uid="tracker_crop_care_delete")
+def remove_crop_care(sender, instance, **kwargs):
+    """Deleting a crop takes its auto-generated reminders with it."""
+    delete_crop_tasks(instance)

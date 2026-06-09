@@ -66,6 +66,16 @@ export interface CreateCropInput {
   planted_on: string
   bed?: string
   quantity?: number | null
+  expected_harvest?: string | null
+  notes?: string
+}
+
+export type UpdateCropInput = Partial<CreateCropInput> & { harvested_on?: string | null }
+
+export interface HarvestCropInput {
+  date?: string
+  yield_kg?: string
+  note?: string
 }
 
 export const api = {
@@ -113,6 +123,12 @@ export const api = {
   cropCatalog: () => request<CropCatalogEntry[]>('/crops/catalog/'),
   createCrop: (input: CreateCropInput) =>
     request<Crop>('/crops/', { method: 'POST', body: JSON.stringify(input) }),
+  updateCrop: (id: number, patch: UpdateCropInput) =>
+    request<Crop>(`/crops/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteCrop: (id: number) => request<void>(`/crops/${id}/`, { method: 'DELETE' }),
+  // Marking harvested also retires the crop's auto watering/harvest reminders.
+  harvestCrop: (id: number, input: HarvestCropInput) =>
+    request<Crop>(`/crops/${id}/harvest/`, { method: 'POST', body: JSON.stringify(input) }),
 
   eggSummary: () => request<EggSummary>('/egg-records/summary/'),
   recentEggs: () => request<unknown>('/egg-records/?ordering=-date').then(decodeList<EggRecord>),

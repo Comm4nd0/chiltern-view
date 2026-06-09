@@ -10,40 +10,79 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCreateCrop, useCropCatalog } from '../api/hooks'
+import { useCreateCrop, useCropCatalog, useDeleteCrop, useUpdateCrop } from '../api/hooks'
+import type { Crop } from '../api/types'
 
-export default function AddCropDialog({ onClose }: { onClose: () => void }) {
+/** Add a new crop planting, or edit/delete an existing one when `crop` is given. */
+export default function AddCropDialog({
+  crop: existing,
+  onClose,
+}: {
+  crop?: Crop
+  onClose: () => void
+}) {
+  const editing = existing != null
   const createCrop = useCreateCrop()
+  const updateCrop = useUpdateCrop()
+  const deleteCrop = useDeleteCrop()
   const catalog = useCropCatalog()
   const todayIso = new Date().toISOString().slice(0, 10)
 
-  const [crop, setCrop] = useState('')
-  const [variety, setVariety] = useState('')
-  const [plantedOn, setPlantedOn] = useState(todayIso)
-  const [bed, setBed] = useState('')
+  const [crop, setCrop] = useState(existing?.crop ?? '')
+  const [variety, setVariety] = useState(existing?.variety ?? '')
+  const [plantedOn, setPlantedOn] = useState(existing?.planted_on ?? todayIso)
+  const [bed, setBed] = useState(existing?.bed ?? '')
+  const [quantity, setQuantity] = useState(existing?.quantity != null ? String(existing.quantity) : '')
+  const [expectedHarvest, setExpectedHarvest] = useState(existing?.expected_harvest ?? '')
+  const [notes, setNotes] = useState(existing?.notes ?? '')
   const [error, setError] = useState<string | null>(null)
+
+  const busy = createCrop.isPending || updateCrop.isPending || deleteCrop.isPending
 
   const save = async () => {
     if (!crop) {
       setError('Pick a crop.')
       return
     }
+    const quantityNum = quantity.trim() ? Number(quantity) : null
+    if (quantityNum != null && (!Number.isInteger(quantityNum) || quantityNum < 0)) {
+      setError('Quantity must be a whole number.')
+      return
+    }
+    const payload = {
+      crop,
+      variety: variety.trim(),
+      planted_on: plantedOn,
+      bed: bed.trim(),
+      quantity: quantityNum,
+      expected_harvest: expectedHarvest || null,
+      notes: notes.trim(),
+    }
     try {
-      await createCrop.mutateAsync({
-        crop,
-        variety: variety.trim(),
-        planted_on: plantedOn,
-        bed: bed.trim(),
-      })
+      if (editing) await updateCrop.mutateAsync({ id: existing.id, patch: payload })
+      else await createCrop.mutateAsync(payload)
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.')
     }
   }
 
+  const remove = async () => {
+    if (!editing) return
+    if (!window.confirm(`Delete ${existing.crop_label}? Its watering and harvest reminders go too.`)) {
+      return
+    }
+    try {
+      await deleteCrop.mutateAsync(existing.id)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete.')
+    }
+  }
+
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>New crop</DialogTitle>
+      <DialogTitle>{editing ? 'Edit crop' : 'New crop'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
@@ -51,7 +90,7 @@ export default function AddCropDialog({ onClose }: { onClose: () => void }) {
             label="Crop"
             value={crop}
             onChange={(e) => setCrop(e.target.value)}
-            autoFocus
+            autoFocus={!editing}
             helperText={catalog.isError ? 'Could not load the crop list' : undefined}
           >
             {(catalog.data ?? []).map((c) => (
@@ -73,6 +112,27 @@ export default function AddCropDialog({ onClose }: { onClose: () => void }) {
             slotProps={{ inputLabel: { shrink: true } }}
           />
           <TextField label="Bed / row (optional)" value={bed} onChange={(e) => setBed(e.target.value)} />
+          <TextField
+            label="Quantity planted (optional)"
+            type="number"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
+          <TextField
+            label="Expected harvest (optional)"
+            type="date"
+            value={expectedHarvest}
+            onChange={(e) => setExpectedHarvest(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            helperText="Leave blank to estimate from the crop's usual season."
+          />
+          <TextField
+            label="Notes (optional)"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            multiline
+            minRows={2}
+          />
           {error && (
             <Typography color="error" variant="body2">
               {error}
@@ -81,9 +141,14 @@ export default function AddCropDialog({ onClose }: { onClose: () => void }) {
         </Stack>
       </DialogContent>
       <DialogActions>
+        {editing && (
+          <Button color="error" onClick={remove} disabled={busy} sx={{ mr: 'auto' }}>
+            Delete
+          </Button>
+        )}
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={save} disabled={createCrop.isPending}>
-          Add
+        <Button variant="contained" onClick={save} disabled={busy}>
+          {editing ? 'Save' : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>

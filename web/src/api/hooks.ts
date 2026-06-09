@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { UpdateTaskInput } from './client'
+import type { HarvestCropInput, UpdateCropInput, UpdateTaskInput } from './client'
 
 export const keys = {
   dashboard: (assignee?: string) => ['dashboard', assignee ?? 'all'] as const,
@@ -152,15 +152,38 @@ export function useDeletePerson() {
   })
 }
 
-export function useCreateCrop() {
+// Crop changes ripple into care tasks (auto watering/harvest reminders), so
+// these invalidate the to-do dashboard as well as the crop lists.
+function useCropMutation<TArgs>(mutationFn: (args: TArgs) => Promise<unknown>) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: api.createCrop,
+    mutationFn,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['crops'] })
       qc.invalidateQueries({ queryKey: ['overview'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
+}
+
+export function useCreateCrop() {
+  return useCropMutation(api.createCrop)
+}
+
+export function useUpdateCrop() {
+  return useCropMutation(({ id, patch }: { id: number; patch: UpdateCropInput }) =>
+    api.updateCrop(id, patch),
+  )
+}
+
+export function useDeleteCrop() {
+  return useCropMutation((id: number) => api.deleteCrop(id))
+}
+
+export function useHarvestCrop() {
+  return useCropMutation(({ id, input }: { id: number; input: HarvestCropInput }) =>
+    api.harvestCrop(id, input),
+  )
 }
 
 export function useIncrementEggs() {

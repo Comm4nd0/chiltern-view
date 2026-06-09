@@ -281,6 +281,9 @@ class ApiClient {
     String variety = '',
     required DateTime plantedOn,
     String bed = '',
+    int? quantity,
+    DateTime? expectedHarvest,
+    String notes = '',
   }) async {
     final res = await _client.post(
       _uri('/crops/'),
@@ -290,6 +293,59 @@ class ApiClient {
         'variety': variety,
         'planted_on': _ymd(plantedOn),
         'bed': bed,
+        'quantity': quantity,
+        'expected_harvest': expectedHarvest != null ? _ymd(expectedHarvest) : null,
+        'notes': notes,
+      }),
+    );
+    _check(res);
+    return Crop.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  /// Edit a planting. Sends all form-controlled fields, so cleared optional
+  /// values (quantity, expected harvest) are unset rather than left untouched.
+  Future<Crop> updateCrop(
+    int id, {
+    required String crop,
+    String variety = '',
+    required DateTime plantedOn,
+    String bed = '',
+    int? quantity,
+    DateTime? expectedHarvest,
+    String notes = '',
+  }) async {
+    final res = await _client.patch(
+      _uri('/crops/$id/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'crop': crop,
+        'variety': variety,
+        'planted_on': _ymd(plantedOn),
+        'bed': bed,
+        'quantity': quantity,
+        'expected_harvest': expectedHarvest != null ? _ymd(expectedHarvest) : null,
+        'notes': notes,
+      }),
+    );
+    _check(res);
+    return Crop.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteCrop(int id) async {
+    final res = await _client.delete(_uri('/crops/$id/'), headers: _headers());
+    _check(res);
+  }
+
+  /// Record a harvest. The backend also retires the crop's auto watering and
+  /// harvest reminders, so callers should re-sync scheduled notifications.
+  Future<Crop> harvestCrop(int id, {DateTime? date, double? yieldKg, String? note}) async {
+    final res = await _client.post(
+      _uri('/crops/$id/harvest/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        if (date != null) 'date': _ymd(date),
+        if (yieldKg != null) 'yield_kg': '$yieldKg',
+        if (note != null && note.isNotEmpty) 'note': note,
       }),
     );
     _check(res);
