@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:chiltern_view/models/animal.dart';
+import 'package:chiltern_view/models/auth_user.dart';
 import 'package:chiltern_view/models/care_task.dart';
 import 'package:chiltern_view/models/egg_summary.dart';
 import 'package:chiltern_view/models/overview.dart';
@@ -152,5 +154,49 @@ void main() {
     expect(o.cropsGrowing, 3);
     expect(o.nextHarvest?.label, 'Carrots');
     expect(o.eggsThisWeek, 12);
+  });
+
+  test('AuthUser parses the login/me payload', () {
+    final user = AuthUser.fromJson({
+      'id': 3,
+      'username': 'marco',
+      'person_id': 7,
+      'person_name': 'Marco',
+    });
+    expect(user.id, 3);
+    expect(user.username, 'marco');
+    expect(user.personId, 7);
+    expect(user.personName, 'Marco');
+
+    // An account with no linked Person yet.
+    final unlinked = AuthUser.fromJson({'id': 4, 'username': 'claire'});
+    expect(unlinked.personId, isNull);
+    expect(unlinked.personName, isNull);
+  });
+
+  test('Animal parses status and date of birth', () {
+    final goat = Animal.fromJson({
+      'id': 1,
+      'name': 'Daisy',
+      'species': 'goat',
+      'species_display': 'Goat',
+      'breed': 'Saanen',
+      'date_of_birth': '2022-04-01',
+      'active': true,
+    });
+    expect(goat.speciesDisplay, 'Goat');
+    expect(goat.active, isTrue);
+    expect(goat.dateOfBirth, DateTime(2022, 4, 1));
+
+    // Missing optional fields: dob null, active defaults to true.
+    final minimal = Animal.fromJson({
+      'id': 2,
+      'name': 'Hen',
+      'species': 'chicken',
+      'species_display': 'Chicken',
+      'breed': '',
+    });
+    expect(minimal.dateOfBirth, isNull);
+    expect(minimal.active, isTrue);
   });
 }

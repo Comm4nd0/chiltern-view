@@ -1,30 +1,28 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
   Card,
+  CardActionArea,
+  CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   Fab,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
   MenuItem,
   Stack,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
+import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { useAnimals, useCreateAnimal, useDeleteAnimal } from '../api/hooks'
+import type { Animal } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
-import EggLogPage from './EggLogPage'
 
 const SPECIES: [string, string][] = [
   ['chicken', 'Chicken'],
@@ -43,6 +41,81 @@ const SPECIES: [string, string][] = [
   ['bees', 'Bee colony'],
   ['other', 'Other'],
 ]
+
+const SPECIES_EMOJI: Record<string, string> = {
+  chicken: '🐔',
+  duck: '🦆',
+  goose: '🦢',
+  turkey: '🦃',
+  goat: '🐐',
+  sheep: '🐑',
+  pig: '🐷',
+  cow: '🐄',
+  horse: '🐴',
+  rabbit: '🐰',
+  tortoise: '🐢',
+  dog: '🐕',
+  cat: '🐈',
+  bees: '🐝',
+  other: '🐾',
+}
+
+interface SpeciesGroup {
+  code: string
+  label: string
+  animals: Animal[]
+}
+
+function groupBySpecies(animals: Animal[]): SpeciesGroup[] {
+  const map = new Map<string, SpeciesGroup>()
+  for (const a of animals) {
+    const group = map.get(a.species) ?? { code: a.species, label: a.species_display, animals: [] }
+    group.animals.push(a)
+    map.set(a.species, group)
+  }
+  return [...map.values()].sort((x, y) => x.label.localeCompare(y.label))
+}
+
+/** Age from date of birth, e.g. "2 yr 3 mo" / "5 mo". Null if unknown. */
+function ageLabel(dob: string | null): string | null {
+  if (!dob) return null
+  const birth = new Date(dob)
+  if (Number.isNaN(birth.getTime())) return null
+  const now = new Date()
+  let months = (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth())
+  if (now.getDate() < birth.getDate()) months -= 1
+  if (months < 0) return null
+  const years = Math.floor(months / 12)
+  const rem = months % 12
+  if (years === 0) return `${months} mo`
+  if (rem === 0) return `${years} yr`
+  return `${years} yr ${rem} mo`
+}
+
+function AnimalRow({ animal, onDelete }: { animal: Animal; onDelete: (a: Animal) => void }) {
+  const facts = [ageLabel(animal.date_of_birth), animal.breed].filter(Boolean).join(' · ')
+  return (
+    <Card sx={{ mb: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5 }}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography noWrap>{animal.name}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            {facts || '—'}
+          </Typography>
+        </Box>
+        <Chip
+          size="small"
+          label={animal.active ? 'Active' : 'Retired'}
+          color={animal.active ? 'success' : 'default'}
+          variant={animal.active ? 'filled' : 'outlined'}
+        />
+        <IconButton aria-label={`Remove ${animal.name}`} onClick={() => onDelete(animal)}>
+          <DeleteOutlineIcon />
+        </IconButton>
+      </Box>
+    </Card>
+  )
+}
 
 function AddAnimalDialog({ onClose }: { onClose: () => void }) {
   const create = useCreateAnimal()
@@ -106,52 +179,82 @@ function AddAnimalDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-function AnimalsList() {
+export default function AnimalsPage() {
   const animals = useAnimals()
   const del = useDeleteAnimal()
+  const [selected, setSelected] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
+  const confirmDelete = (a: Animal) => {
+    if (window.confirm(`Remove ${a.name}? Their tasks stay but become unassigned.`)) {
+      del.mutate(a.id)
+    }
+  }
+
   return (
-    <Box>
+    <Box sx={{ pb: 10 }}>
       <QueryBoundary query={animals}>
-        {(list) =>
-          list.length === 0 ? (
-            <Typography align="center" color="text.secondary" sx={{ mt: 8 }}>
-              No animals yet — add your first.
-            </Typography>
-          ) : (
-            <List>
-              {list.map((animal) => (
-                <Card key={animal.id} sx={{ mb: 1 }}>
-                  <ListItem
-                    secondaryAction={
-                      <IconButton
-                        edge="end"
-                        aria-label="Remove"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Remove ${animal.name}? Their tasks stay but become unassigned.`,
-                            )
-                          ) {
-                            del.mutate(animal.id)
-                          }
-                        }}
-                      >
-                        <DeleteOutlineIcon />
-                      </IconButton>
-                    }
-                  >
-                    <ListItemText
-                      primary={animal.name}
-                      secondary={[animal.species_display, animal.breed].filter(Boolean).join(' · ')}
-                    />
-                  </ListItem>
-                </Card>
-              ))}
-            </List>
+        {(list) => {
+          if (list.length === 0) {
+            return (
+              <Typography align="center" color="text.secondary" sx={{ mt: 8 }}>
+                No animals yet — add your first.
+              </Typography>
+            )
+          }
+          const groups = groupBySpecies(list)
+
+          // Top level: a tile per species kept.
+          if (selected === null) {
+            return (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                  gap: 1.5,
+                }}
+              >
+                {groups.map((g) => (
+                  <Card key={g.code}>
+                    <CardActionArea onClick={() => setSelected(g.code)} sx={{ height: '100%' }}>
+                      <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                        <Typography sx={{ fontSize: 40, lineHeight: 1 }}>
+                          {SPECIES_EMOJI[g.code] ?? '🐾'}
+                        </Typography>
+                        <Typography variant="subtitle1" sx={{ mt: 1 }}>
+                          {g.label}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {g.animals.length} {g.animals.length === 1 ? 'animal' : 'animals'}
+                        </Typography>
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                ))}
+              </Box>
+            )
+          }
+
+          // Drill-down: the individual animals of the chosen species.
+          const group = groups.find((g) => g.code === selected)
+          return (
+            <Stack spacing={1}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <IconButton onClick={() => setSelected(null)} aria-label="Back to all animals">
+                  <ArrowBackIcon />
+                </IconButton>
+                <Typography variant="h6">{group?.label ?? 'Animals'}</Typography>
+              </Stack>
+              {!group || group.animals.length === 0 ? (
+                <Typography color="text.secondary">None of these left.</Typography>
+              ) : (
+                group.animals.map((a) => (
+                  <AnimalRow key={a.id} animal={a} onDelete={confirmDelete} />
+                ))
+              )}
+            </Stack>
           )
-        }
+        }}
       </QueryBoundary>
 
       <Fab
@@ -163,30 +266,6 @@ function AnimalsList() {
         <AddIcon />
       </Fab>
       {dialogOpen && <AddAnimalDialog onClose={() => setDialogOpen(false)} />}
-    </Box>
-  )
-}
-
-export default function AnimalsPage() {
-  const [params, setParams] = useSearchParams()
-  const view = params.get('view') === 'eggs' ? 'eggs' : 'animals'
-
-  return (
-    <Box>
-      <ToggleButtonGroup
-        value={view}
-        exclusive
-        fullWidth
-        size="small"
-        sx={{ mb: 2 }}
-        onChange={(_, v) => {
-          if (v) setParams(v === 'eggs' ? { view: 'eggs' } : {})
-        }}
-      >
-        <ToggleButton value="animals">Animals</ToggleButton>
-        <ToggleButton value="eggs">Eggs</ToggleButton>
-      </ToggleButtonGroup>
-      {view === 'eggs' ? <EggLogPage /> : <AnimalsList />}
     </Box>
   )
 }

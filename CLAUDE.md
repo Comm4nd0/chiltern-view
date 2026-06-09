@@ -93,15 +93,21 @@ them.**
   (zero-downtime). Afterwards, verify the existing sites still serve.
 - DNS: `chilternview.lumatechsolutions.co.uk` must A-record to `178.104.29.66`
   for Caddy to issue HTTPS.
-- **Security:** the app has no login and is now internet-facing via Caddy, so
-  anyone with the URL can read/write the data. **Decision: left open for now;
-  proper per-user authentication is a planned future task** (e.g. DRF token auth /
-  accounts, linking the `Person` records to `auth.User`) across backend + web +
-  Flutter — keep the two clients at parity.
+- **Security:** the API now requires **per-user login** (DRF
+  `TokenAuthentication`). Every endpoint needs an `Authorization: Token <key>`
+  header except `GET /api/health/` (the Docker healthcheck) and
+  `POST /api/auth/login/`. Each household user (Marco, Claire) is an `auth.User`
+  linked to a `Person` (`Person.user`); create the accounts in **Django admin**
+  (`/admin/`) — the `DJANGO_SUPERUSER_*` env bootstrap makes the first admin.
+  Tokens are issued on login and revoked on sign-out; both clients persist the
+  token (web `localStorage`, Flutter `shared_preferences`), send it on every
+  request, and drop to the login screen on a `401`. Auth endpoints:
+  `POST /api/auth/login/`, `POST /api/auth/logout/`, `GET /api/auth/me/`.
 
 ## Conventions
-- Backend is no-login (trusted LAN; **now also internet-facing via Caddy** — see
-  the security note above); "people" are lightweight name records, not auth users.
+- Backend requires login (DRF token auth; **internet-facing via Caddy** — see the
+  security note above). "people" are lightweight name records, each optionally
+  linked to an `auth.User` for login (`Person.user`).
 - Keep `flutter analyze` clean and `flutter test` green before committing.
 - The Flutter UI mirrors the backend's computed fields (overdue ranking, potato
   stages, egg counter); match existing style when extending.

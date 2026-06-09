@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config.dart';
 import '../models/animal.dart';
+import '../models/auth_user.dart';
 import '../models/care_task.dart';
 import '../models/crop.dart';
 import '../models/crop_catalog.dart';
@@ -26,7 +27,10 @@ class ApiClient {
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
-  static const Map<String, String> _jsonHeaders = {'Content-Type': 'application/json'};
+
+  /// Invoked when an authenticated request returns 401 (token missing, expired,
+  /// or revoked) so the app can drop credentials and return to the login screen.
+  static void Function()? onUnauthorized;
 
   Uri _uri(String path, [Map<String, dynamic>? query]) {
     var uri = Uri.parse('${AppConfig.baseUrl}$path');
@@ -36,7 +40,20 @@ class ApiClient {
     return uri;
   }
 
+  /// Headers for every request: the auth token when signed in, plus a JSON
+  /// content-type for requests that carry a body.
+  Map<String, String> _headers({bool json = false}) {
+    final token = AppConfig.authToken;
+    return {
+      if (json) 'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Token $token',
+    };
+  }
+
   void _check(http.Response res) {
+    if (res.statusCode == 401) {
+      onUnauthorized?.call();
+    }
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw ApiException(res.statusCode, res.body);
     }
@@ -51,19 +68,62 @@ class ApiClient {
     return body as List<dynamic>;
   }
 
+  // --- Auth ---------------------------------------------------------------
+  /// Exchange username/password for a token and persist it via AppConfig.
+  /// A non-2xx here means bad credentials (not session expiry), so it is NOT
+  /// routed through [onUnauthorized].
+  Future<AuthUser> login(String username, String password) async {
+    final res = await _client.post(
+      _uri('/auth/login/'),
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({'username': username, 'password': password}),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(res.statusCode, res.body);
+    }
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final user = AuthUser.fromJson(data['user'] as Map<String, dynamic>);
+    await AppConfig.setAuth(
+      token: data['token'] as String,
+      username: user.username,
+      personId: user.personId,
+      personName: user.personName,
+    );
+    return user;
+  }
+
+  /// Revoke the token server-side, then forget it locally (always).
+  Future<void> logout() async {
+    try {
+      await _client.post(_uri('/auth/logout/'), headers: _headers());
+    } catch (_) {
+      // Ignore network errors — local credentials are cleared regardless.
+    }
+    await AppConfig.clearAuth();
+  }
+
+  Future<AuthUser> me() async {
+    final res = await _client.get(_uri('/auth/me/'), headers: _headers());
+    _check(res);
+    return AuthUser.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   // --- Overview -----------------------------------------------------------
   Future<Overview> overview() async {
-    final res = await _client.get(_uri('/overview/'));
+    final res = await _client.get(_uri('/overview/'), headers: _headers());
     _check(res);
     return Overview.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   // --- Care tasks ---------------------------------------------------------
   Future<List<CareTask>> dashboard({String include = 'all', String? assignee}) async {
-    final res = await _client.get(_uri('/care-tasks/dashboard/', {
-      'include': include,
-      if (assignee != null) 'assignee': assignee,
-    }));
+    final res = await _client.get(
+      _uri('/care-tasks/dashboard/', {
+        'include': include,
+        if (assignee != null) 'assignee': assignee,
+      }),
+      headers: _headers(),
+    );
     _check(res);
     return _decodeList(res).map((e) => CareTask.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -71,7 +131,7 @@ class ApiClient {
   Future<CareTask> completeTask(int id, {String? note}) async {
     final res = await _client.post(
       _uri('/care-tasks/$id/complete/'),
-      headers: _jsonHeaders,
+      headers: _headers(json: true),
       body: jsonEncode({if (note != null && note.isNotEmpty) 'note': note}),
     );
     _check(res);
@@ -87,7 +147,7 @@ class ApiClient {
   }) async {
     final res = await _client.post(
       _uri('/care-tasks/'),
-      headers: _jsonHeaders,
+      headers: _headers(json: true),
       body: jsonEncode({
         'name': name,
         'recurrence_interval_days': recurrenceIntervalDays,
@@ -102,7 +162,7 @@ class ApiClient {
 
   // --- People -------------------------------------------------------------
   Future<List<Person>> people() async {
-    final res = await _client.get(_uri('/people/', {'ordering': 'name'}));
+    final res = await _client.get(_uri('/people/', {'ordering': 'name'}), headers: _headers());
     _check(res);
     return _decodeList(res).map((e) => Person.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -110,7 +170,7 @@ class ApiClient {
   Future<Person> createPerson(String name) async {
     final res = await _client.post(
       _uri('/people/'),
-      headers: _jsonHeaders,
+      headers: _headers(json: true),
       body: jsonEncode({'name': name}),
     );
     _check(res);
@@ -118,13 +178,14 @@ class ApiClient {
   }
 
   Future<void> deletePerson(int id) async {
-    final res = await _client.delete(_uri('/people/$id/'));
+    final res = await _client.delete(_uri('/people/$id/'), headers: _headers());
     _check(res);
   }
 
   // --- Animals ------------------------------------------------------------
+  /// All animals (active and retired) so the dashboard can show each status.
   Future<List<Animal>> animals() async {
-    final res = await _client.get(_uri('/animals/', {'active': 'true', 'ordering': 'name'}));
+    final res = await _client.get(_uri('/animals/', {'ordering': 'name'}), headers: _headers());
     _check(res);
     return _decodeList(res).map((e) => Animal.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -136,7 +197,7 @@ class ApiClient {
   }) async {
     final res = await _client.post(
       _uri('/animals/'),
-      headers: _jsonHeaders,
+      headers: _headers(json: true),
       body: jsonEncode({'name': name, 'species': species, 'breed': breed}),
     );
     _check(res);
@@ -144,19 +205,19 @@ class ApiClient {
   }
 
   Future<void> deleteAnimal(int id) async {
-    final res = await _client.delete(_uri('/animals/$id/'));
+    final res = await _client.delete(_uri('/animals/$id/'), headers: _headers());
     _check(res);
   }
 
   // --- Crops --------------------------------------------------------------
   Future<List<Crop>> crops({String show = 'growing'}) async {
-    final res = await _client.get(_uri('/crops/timeline/', {'show': show}));
+    final res = await _client.get(_uri('/crops/timeline/', {'show': show}), headers: _headers());
     _check(res);
     return _decodeList(res).map((e) => Crop.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<List<CropCatalogEntry>> cropCatalog() async {
-    final res = await _client.get(_uri('/crops/catalog/'));
+    final res = await _client.get(_uri('/crops/catalog/'), headers: _headers());
     _check(res);
     final data = jsonDecode(res.body) as List<dynamic>;
     return data.map((e) => CropCatalogEntry.fromJson(e as Map<String, dynamic>)).toList();
@@ -170,7 +231,7 @@ class ApiClient {
   }) async {
     final res = await _client.post(
       _uri('/crops/'),
-      headers: _jsonHeaders,
+      headers: _headers(json: true),
       body: jsonEncode({
         'crop': crop,
         'variety': variety,
@@ -184,13 +245,13 @@ class ApiClient {
 
   // --- Eggs ---------------------------------------------------------------
   Future<EggSummary> eggSummary() async {
-    final res = await _client.get(_uri('/egg-records/summary/'));
+    final res = await _client.get(_uri('/egg-records/summary/'), headers: _headers());
     _check(res);
     return EggSummary.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   Future<List<EggRecord>> recentEggs() async {
-    final res = await _client.get(_uri('/egg-records/', {'ordering': '-date'}));
+    final res = await _client.get(_uri('/egg-records/', {'ordering': '-date'}), headers: _headers());
     _check(res);
     return _decodeList(res).map((e) => EggRecord.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -198,7 +259,7 @@ class ApiClient {
   Future<EggRecord> incrementEggs({int count = 1, String? source}) async {
     final res = await _client.post(
       _uri('/egg-records/increment/'),
-      headers: _jsonHeaders,
+      headers: _headers(json: true),
       body: jsonEncode({
         'count': count,
         if (source != null && source.isNotEmpty) 'source': source,

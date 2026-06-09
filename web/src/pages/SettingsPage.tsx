@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   Alert,
+  Button,
   Divider,
   IconButton,
   List,
@@ -14,8 +15,12 @@ import PersonIcon from '@mui/icons-material/Person'
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import AddIcon from '@mui/icons-material/Add'
+import LogoutIcon from '@mui/icons-material/Logout'
 import { useCreatePerson, useDeletePerson, usePeople } from '../api/hooks'
 import { setMyPersonId, useMyPersonId } from '../config'
+import { clearAuth, useAuth } from '../api/auth'
+import { api } from '../api/client'
+import { queryClient } from '../queryClient'
 import QueryBoundary from '../components/QueryBoundary'
 
 export default function SettingsPage() {
@@ -23,7 +28,18 @@ export default function SettingsPage() {
   const myId = useMyPersonId()
   const createPerson = useCreatePerson()
   const deletePerson = useDeletePerson()
+  const { user } = useAuth()
   const [name, setName] = useState('')
+
+  const signOut = async () => {
+    try {
+      await api.logout()
+    } catch {
+      // Even if the network call fails, drop local creds and return to login.
+    }
+    clearAuth()
+    queryClient.clear()
+  }
 
   const add = async () => {
     if (!name.trim()) return
@@ -33,6 +49,21 @@ export default function SettingsPage() {
 
   return (
     <Stack spacing={2}>
+      <Typography variant="h6">Account</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Signed in as {user?.username ?? '…'}.
+      </Typography>
+      <Button
+        variant="outlined"
+        color="error"
+        startIcon={<LogoutIcon />}
+        onClick={signOut}
+        sx={{ alignSelf: 'flex-start' }}
+      >
+        Sign out
+      </Button>
+      <Divider />
+
       <Typography variant="h6">People</Typography>
       <Typography variant="body2" color="text.secondary">
         Add yourself and one other, then tap the person icon to mark which one is you in this

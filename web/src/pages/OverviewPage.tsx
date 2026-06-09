@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -10,10 +11,15 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import ChecklistIcon from '@mui/icons-material/Checklist'
-import PetsIcon from '@mui/icons-material/Pets'
-import GrassIcon from '@mui/icons-material/Grass'
-import EggIcon from '@mui/icons-material/Egg'
+import {
+  ListChecks,
+  PawPrint,
+  Plant,
+  Egg,
+  CaretRight,
+  CheckCircle,
+  type Icon as PhosphorIcon,
+} from '@phosphor-icons/react'
 import { useCompleteTask, useOverview } from '../api/hooks'
 import type { OverviewTask } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
@@ -27,16 +33,80 @@ function dueLabel(task: OverviewTask): string {
   return `due in ${-task.days_overdue}d`
 }
 
+/** A rounded, tinted square holding an icon — the iOS Settings-row motif. */
+function IconTile({ icon: Icon, color }: { icon: PhosphorIcon; color: string }) {
+  return (
+    <Box
+      sx={{
+        width: 38,
+        height: 38,
+        borderRadius: 2.5,
+        bgcolor: `${color}1F`,
+        color,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      <Icon size={22} weight="fill" />
+    </Box>
+  )
+}
+
 function CountPill({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <Box sx={{ flex: 1, textAlign: 'center', borderRadius: 2, py: 1, bgcolor: `${color}14` }}>
-      <Typography variant="h5" sx={{ color, fontWeight: 700, lineHeight: 1.1 }}>
+    <Box sx={{ flex: 1, textAlign: 'center', borderRadius: 3, py: 1.25, bgcolor: `${color}14` }}>
+      <Typography variant="h4" sx={{ color, fontWeight: 800, lineHeight: 1.1 }}>
         {value}
       </Typography>
-      <Typography variant="caption" color="text.secondary">
+      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
         {label}
       </Typography>
     </Box>
+  )
+}
+
+function SummaryCard({
+  icon,
+  color,
+  title,
+  value,
+  subtitle,
+  onClick,
+  children,
+}: {
+  icon: PhosphorIcon
+  color: string
+  title: string
+  value: string | number
+  subtitle?: string
+  onClick: () => void
+  children?: ReactNode
+}) {
+  return (
+    <Card>
+      <CardActionArea onClick={onClick}>
+        <CardContent>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <IconTile icon={icon} color={color} />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="subtitle1">{title}</Typography>
+              {subtitle && (
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {subtitle}
+                </Typography>
+              )}
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+              {value}
+            </Typography>
+            <CaretRight size={16} weight="bold" color="rgba(60,60,67,0.3)" />
+          </Stack>
+          {children}
+        </CardContent>
+      </CardActionArea>
+    </Card>
   )
 }
 
@@ -52,8 +122,8 @@ export default function OverviewPage() {
           {/* Needs doing */}
           <Card>
             <CardContent>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                <ChecklistIcon color="primary" />
+              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 1.5 }}>
+                <IconTile icon={ListChecks} color="#00796B" />
                 <Typography variant="h6" sx={{ flex: 1 }}>
                   Needs doing
                 </Typography>
@@ -61,7 +131,7 @@ export default function OverviewPage() {
                   All tasks
                 </Button>
               </Stack>
-              <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+              <Stack direction="row" spacing={1} sx={{ mb: data.tasks.top.length ? 1.5 : 0 }}>
                 <CountPill label="overdue" value={data.tasks.overdue} color={statusColor('overdue')} />
                 <CountPill label="today" value={data.tasks.due_today} color={statusColor('due_today')} />
                 <CountPill
@@ -71,9 +141,12 @@ export default function OverviewPage() {
                 />
               </Stack>
               {data.tasks.top.length === 0 ? (
-                <Typography color="text.secondary" variant="body2">
-                  All caught up.
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1} sx={{ color: 'success.main', mt: 1 }}>
+                  <CheckCircle size={20} weight="fill" />
+                  <Typography variant="body2" color="text.secondary">
+                    All caught up.
+                  </Typography>
+                </Stack>
               ) : (
                 <Stack divider={<Divider />}>
                   {data.tasks.top.map((task) => (
@@ -82,7 +155,7 @@ export default function OverviewPage() {
                       direction="row"
                       alignItems="center"
                       spacing={1}
-                      sx={{ py: 0.75 }}
+                      sx={{ py: 1 }}
                     >
                       <Box
                         sx={{
@@ -94,8 +167,13 @@ export default function OverviewPage() {
                         }}
                       />
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography noWrap>{task.name}</Typography>
-                        <Typography variant="caption" sx={{ color: statusColor(task.status) }}>
+                        <Typography noWrap fontWeight={500}>
+                          {task.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: statusColor(task.status), fontWeight: 600 }}
+                        >
                           {dueLabel(task)}
                         </Typography>
                       </Box>
@@ -115,73 +193,48 @@ export default function OverviewPage() {
             </CardContent>
           </Card>
 
-          {/* Potatoes */}
-          <Card>
-            <CardActionArea onClick={() => navigate('/crops')}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <GrassIcon color="primary" />
-                  <Typography variant="h6" sx={{ flex: 1 }}>
-                    Crops
-                  </Typography>
-                  <Typography variant="h6">{data.crops.growing}</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  {data.crops.growing === 0
-                    ? 'nothing growing'
-                    : data.crops.next_harvest
-                      ? `growing · next harvest ${data.crops.next_harvest.label} ~ ${fmtDate(
-                          data.crops.next_harvest.date,
-                        )}`
-                      : 'growing'}
-                </Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
+          <SummaryCard
+            icon={Plant}
+            color="#34C759"
+            title="Crops"
+            value={data.crops.growing}
+            onClick={() => navigate('/crops')}
+            subtitle={
+              data.crops.growing === 0
+                ? 'nothing growing'
+                : data.crops.next_harvest
+                  ? `next harvest ${data.crops.next_harvest.label} ~ ${fmtDate(
+                      data.crops.next_harvest.date,
+                    )}`
+                  : 'growing'
+            }
+          />
 
-          {/* Eggs */}
-          <Card>
-            <CardActionArea onClick={() => navigate('/animals?view=eggs')}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <EggIcon color="primary" />
-                  <Typography variant="h6" sx={{ flex: 1 }}>
-                    Eggs
-                  </Typography>
-                  <Typography variant="h6">{data.eggs.today}</Typography>
-                </Stack>
-                <Typography variant="body2" color="text.secondary">
-                  today · {data.eggs.this_week} this week
-                </Typography>
-              </CardContent>
-            </CardActionArea>
-          </Card>
+          <SummaryCard
+            icon={Egg}
+            color="#FF9500"
+            title="Eggs"
+            value={data.eggs.today}
+            subtitle={`today · ${data.eggs.this_week} this week`}
+            onClick={() => navigate('/eggs')}
+          />
 
-          {/* Animals */}
-          <Card>
-            <CardActionArea onClick={() => navigate('/animals')}>
-              <CardContent>
-                <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 0.5 }}>
-                  <PetsIcon color="primary" />
-                  <Typography variant="h6" sx={{ flex: 1 }}>
-                    Animals
-                  </Typography>
-                  <Typography variant="h6">{data.animals.total}</Typography>
-                </Stack>
-                {Object.keys(data.animals.by_species).length === 0 ? (
-                  <Typography variant="body2" color="text.secondary">
-                    none yet
-                  </Typography>
-                ) : (
-                  <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
-                    {Object.entries(data.animals.by_species).map(([species, count]) => (
-                      <Chip key={species} label={`${species}: ${count}`} size="small" />
-                    ))}
-                  </Stack>
-                )}
-              </CardContent>
-            </CardActionArea>
-          </Card>
+          <SummaryCard
+            icon={PawPrint}
+            color="#007AFF"
+            title="Animals"
+            value={data.animals.total}
+            subtitle={Object.keys(data.animals.by_species).length === 0 ? 'none yet' : undefined}
+            onClick={() => navigate('/animals')}
+          >
+            {Object.keys(data.animals.by_species).length > 0 && (
+              <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1, mt: 1.5 }}>
+                {Object.entries(data.animals.by_species).map(([species, count]) => (
+                  <Chip key={species} label={`${species}: ${count}`} size="small" />
+                ))}
+              </Stack>
+            )}
+          </SummaryCard>
         </Stack>
       )}
     </QueryBoundary>

@@ -1,5 +1,6 @@
 import type {
   Animal,
+  AuthUser,
   CareTask,
   Crop,
   CropCatalogEntry,
@@ -8,16 +9,30 @@ import type {
   Overview,
   Person,
 } from './types'
+import { clearAuth, getToken } from './auth'
+import { queryClient } from '../queryClient'
 
 // Same-origin in production (nginx proxies /api to the backend); the Vite dev
 // server proxies /api too. Override with VITE_API_BASE if ever needed.
 const BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const { headers: optHeaders, ...rest } = options ?? {}
+  const token = getToken()
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
+    ...rest,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Token ${token}` } : {}),
+      ...optHeaders,
+    },
   })
+  if (res.status === 401) {
+    // Token missing, expired, or revoked: drop it so the app falls back to login.
+    clearAuth()
+    queryClient.clear()
+    throw new Error('Unauthorized')
+  }
   if (!res.ok) {
     const body = await res.text()
     throw new Error(`API ${res.status}: ${body}`)
@@ -51,6 +66,14 @@ export interface CreateCropInput {
 }
 
 export const api = {
+  login: (username: string, password: string) =>
+    request<{ token: string; user: AuthUser }>('/auth/login/', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+  logout: () => request<void>('/auth/logout/', { method: 'POST' }),
+  me: () => request<AuthUser>('/auth/me/'),
+
   overview: () => request<Overview>('/overview/'),
   dashboard: (assignee?: string) =>
     request<unknown>(
@@ -69,8 +92,8 @@ export const api = {
     request<Person>('/people/', { method: 'POST', body: JSON.stringify({ name }) }),
   deletePerson: (id: number) => request<void>(`/people/${id}/`, { method: 'DELETE' }),
 
-  animals: () =>
-    request<unknown>('/animals/?active=true&ordering=name').then(decodeList<Animal>),
+  // All animals (active and retired) so the dashboard can show each one's status.
+  animals: () => request<unknown>('/animals/?ordering=name').then(decodeList<Animal>),
   createAnimal: (input: { name: string; species: string; breed?: string }) =>
     request<Animal>('/animals/', { method: 'POST', body: JSON.stringify(input) }),
   deleteAnimal: (id: number) => request<void>(`/animals/${id}/`, { method: 'DELETE' }),

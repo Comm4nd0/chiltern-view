@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/animal.dart';
 import '../widgets/async_view.dart';
-import 'egg_log_screen.dart';
 
 const List<List<String>> _speciesChoices = [
   ['chicken', 'Chicken'],
@@ -23,6 +22,55 @@ const List<List<String>> _speciesChoices = [
   ['other', 'Other'],
 ];
 
+const Map<String, String> _speciesEmoji = {
+  'chicken': '🐔',
+  'duck': '🦆',
+  'goose': '🦢',
+  'turkey': '🦃',
+  'goat': '🐐',
+  'sheep': '🐑',
+  'pig': '🐷',
+  'cow': '🐄',
+  'horse': '🐴',
+  'rabbit': '🐰',
+  'tortoise': '🐢',
+  'dog': '🐕',
+  'cat': '🐈',
+  'bees': '🐝',
+  'other': '🐾',
+};
+
+/// Age from date of birth, e.g. "2 yr 3 mo" / "5 mo". Null if unknown.
+String? _ageLabel(DateTime? dob) {
+  if (dob == null) return null;
+  final now = DateTime.now();
+  int months = (now.year - dob.year) * 12 + (now.month - dob.month);
+  if (now.day < dob.day) months -= 1;
+  if (months < 0) return null;
+  final years = months ~/ 12;
+  final rem = months % 12;
+  if (years == 0) return '$months mo';
+  if (rem == 0) return '$years yr';
+  return '$years yr $rem mo';
+}
+
+class _SpeciesGroup {
+  final String code;
+  final String label;
+  final List<Animal> animals;
+  _SpeciesGroup(this.code, this.label, this.animals);
+}
+
+List<_SpeciesGroup> _groupBySpecies(List<Animal> animals) {
+  final map = <String, _SpeciesGroup>{};
+  for (final a in animals) {
+    final g = map.putIfAbsent(a.species, () => _SpeciesGroup(a.species, a.speciesDisplay, []));
+    g.animals.add(a);
+  }
+  final groups = map.values.toList()..sort((x, y) => x.label.compareTo(y.label));
+  return groups;
+}
+
 class AnimalsScreen extends StatefulWidget {
   const AnimalsScreen({super.key});
 
@@ -33,7 +81,7 @@ class AnimalsScreen extends StatefulWidget {
 class _AnimalsScreenState extends State<AnimalsScreen> {
   final ApiClient _api = ApiClient();
   late Future<List<Animal>> _future;
-  String _view = 'animals';
+  String? _selected; // species code being drilled into; null = tile grid
 
   @override
   void initState() {
@@ -78,73 +126,147 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: _view == 'animals'
-          ? FloatingActionButton.extended(
-              onPressed: _add,
-              icon: const Icon(Icons.add),
-              label: const Text('Animal'),
-            )
-          : null,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Center(
-              child: SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'animals', label: Text('Animals')),
-                  ButtonSegment(value: 'eggs', label: Text('Eggs')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _add,
+        icon: const Icon(Icons.add),
+        label: const Text('Animal'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => _refresh(),
+        child: AsyncView<List<Animal>>(
+          future: _future,
+          onRetry: _refresh,
+          builder: (context, animals) {
+            if (animals.isEmpty) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 120),
+                  Center(child: Text('No animals yet — add your first.')),
                 ],
-                selected: {_view},
-                onSelectionChanged: (s) => setState(() => _view = s.first),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _view == 'animals' ? _animalsBody() : const EggLogScreen(),
-          ),
-        ],
+              );
+            }
+            final groups = _groupBySpecies(animals);
+            if (_selected == null) return _tiles(groups);
+
+            _SpeciesGroup? group;
+            for (final g in groups) {
+              if (g.code == _selected) {
+                group = g;
+                break;
+              }
+            }
+            return _drilldown(context, group);
+          },
+        ),
       ),
     );
   }
 
-  Widget _animalsBody() {
-    return RefreshIndicator(
-      onRefresh: () async => _refresh(),
-      child: AsyncView<List<Animal>>(
-        future: _future,
-        onRetry: _refresh,
-        builder: (context, animals) {
-          if (animals.isEmpty) {
-            return ListView(
-              children: const [
-                SizedBox(height: 120),
-                Center(child: Text('No animals yet — add your first.')),
-              ],
-            );
-          }
-          return ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: animals.length,
-            itemBuilder: (context, i) {
-              final animal = animals[i];
-              final sub =
-                  [animal.speciesDisplay, animal.breed].where((s) => s.isNotEmpty).join(' · ');
-              return Card(
-                child: ListTile(
-                  leading: const Icon(Icons.pets),
-                  title: Text(animal.name),
-                  subtitle: sub.isEmpty ? null : Text(sub),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _confirmDelete(animal),
-                  ),
+  Widget _tiles(List<_SpeciesGroup> groups) {
+    return GridView.extent(
+      maxCrossAxisExtent: 200,
+      padding: const EdgeInsets.all(12),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        for (final g in groups)
+          Card(
+            child: InkWell(
+              onTap: () => setState(() => _selected = g.code),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(_speciesEmoji[g.code] ?? '🐾', style: const TextStyle(fontSize: 40)),
+                    const SizedBox(height: 8),
+                    Text(g.label,
+                        style: Theme.of(context).textTheme.titleMedium,
+                        textAlign: TextAlign.center),
+                    Text(
+                      '${g.animals.length} ${g.animals.length == 1 ? 'animal' : 'animals'}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-              );
-            },
-          );
-        },
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _drilldown(BuildContext context, _SpeciesGroup? group) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(12),
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.arrow_back),
+              tooltip: 'Back to all animals',
+              onPressed: () => setState(() => _selected = null),
+            ),
+            Text(group?.label ?? 'Animals', style: Theme.of(context).textTheme.titleLarge),
+          ],
+        ),
+        const SizedBox(height: 4),
+        if (group == null || group.animals.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: Text('None of these left.')),
+          )
+        else
+          for (final a in group.animals) _AnimalRow(animal: a, onDelete: () => _confirmDelete(a)),
+      ],
+    );
+  }
+}
+
+class _AnimalRow extends StatelessWidget {
+  final Animal animal;
+  final VoidCallback onDelete;
+  const _AnimalRow({required this.animal, required this.onDelete});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final facts = [_ageLabel(animal.dateOfBirth), animal.breed]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' · ');
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(animal.name, style: theme.textTheme.titleMedium),
+                  Text(facts.isEmpty ? '—' : facts, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+            Chip(
+              label: Text(animal.active ? 'Active' : 'Retired'),
+              visualDensity: VisualDensity.compact,
+              backgroundColor: animal.active
+                  ? theme.colorScheme.secondaryContainer
+                  : theme.colorScheme.surfaceContainerHighest,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Remove ${animal.name}',
+              onPressed: onDelete,
+            ),
+          ],
+        ),
       ),
     );
   }

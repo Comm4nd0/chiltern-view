@@ -13,6 +13,11 @@ App facts:
 > `Info.plist` already allows this (`NSAllowsLocalNetworking`). The first time the
 > app reaches Luma001, iOS may ask to allow local-network access — tap **Allow**.
 
+> **Login required (since the auth update):** ship a **new build** (bump `+N` in
+> `frontend/pubspec.yaml`, then `fastlane beta` per §5) so testers get the version
+> with the login screen, and make sure each tester has an app account (README →
+> *Authentication*).
+
 ---
 
 ## 1. One-time Apple setup
@@ -60,9 +65,11 @@ In **App Store Connect → your app → TestFlight**:
 1. Under **Internal Testing**, create a group and add yourself and Claire.
 2. You'll each get an email → install the **TestFlight** app from the App Store →
    accept the invite → install Chiltern View.
-3. On first launch: allow **notifications** (for reminders) and **local network**
-   (to reach Luma001). Then Settings → set the API URL, pick who you are, and turn
-   on reminders.
+3. On first launch you'll get a **login screen** — sign in with the username and
+   password created for you in Django admin (README → *Authentication*). Then allow
+   **notifications** (for reminders) and **local network** (to reach Luma001), and
+   in Settings set the API URL and turn on reminders. (Signing in auto-selects
+   "you" for task assignment.)
 
 ## 5. Releasing updates with one command (fastlane)
 

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'api/api_client.dart';
+import 'auth_state.dart';
 import 'config.dart';
 import 'screens/animals_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/crops_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/overview_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
@@ -13,7 +15,15 @@ import 'theme.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppConfig.load();
+  signedIn.value = AppConfig.isSignedIn;
   await NotificationService.instance.init();
+  // On any 401 from an authenticated request: drop credentials, pop back to the
+  // root, and let RootGate show the login screen.
+  ApiClient.onUnauthorized = () {
+    AppConfig.clearAuth();
+    signedIn.value = false;
+    navigatorKey.currentState?.popUntil((route) => route.isFirst);
+  };
   runApp(const ChilternViewApp());
 }
 
@@ -24,9 +34,24 @@ class ChilternViewApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Chiltern View',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      home: const HomeShell(),
+      home: const RootGate(),
+    );
+  }
+}
+
+/// Swaps between the login screen and the app shell as auth state changes.
+class RootGate extends StatelessWidget {
+  const RootGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: signedIn,
+      builder: (context, isSignedIn, _) =>
+          isSignedIn ? const HomeShell() : const LoginScreen(),
     );
   }
 }

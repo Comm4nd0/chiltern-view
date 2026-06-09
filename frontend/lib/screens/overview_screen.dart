@@ -7,6 +7,7 @@ import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/care_task_card.dart'; // AssigneeAvatar
+import 'egg_log_screen.dart';
 
 /// Home / front page: an at-a-glance overview of the whole holding.
 class OverviewScreen extends StatefulWidget {
@@ -178,7 +179,16 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   Widget _eggs(BuildContext context, Overview o) {
     return _section(context, Icons.egg, 'Eggs', '${o.eggsToday}',
-        'today · ${o.eggsThisWeek} this week', () => widget.onOpenTab(3));
+        'today · ${o.eggsThisWeek} this week', () => _openEggs(context));
+  }
+
+  void _openEggs(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => Scaffold(
+        appBar: AppBar(title: const Text('Eggs')),
+        body: const EggLogScreen(),
+      ),
+    ));
   }
 
   Widget _animals(BuildContext context, Overview o) {

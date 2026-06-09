@@ -47,12 +47,21 @@ class Animal(models.Model):
 class Person(models.Model):
     """Someone who looks after the holding — used to assign care tasks.
 
-    Deliberately lightweight (just a name): this is a trusted-LAN app with no
-    login. A Person can later gain a OneToOne link to ``auth.User`` if real
-    accounts are introduced, without changing how tasks reference it.
+    Lightweight (just a name), with an optional link to a login account: each
+    household user (Marco, Claire) is a ``Person`` linked to an ``auth.User``.
+    The link is nullable so a Person can exist without a login, and ``SET_NULL``
+    keeps the Person (and their task history) if the account is ever deleted.
     """
 
     name = models.CharField(max_length=100, unique=True)
+    user = models.OneToOneField(
+        "auth.User",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="person",
+        help_text="Login account linked to this person.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

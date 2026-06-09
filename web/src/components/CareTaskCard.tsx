@@ -1,6 +1,5 @@
 import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material'
-import EventIcon from '@mui/icons-material/Event'
-import CheckIcon from '@mui/icons-material/Check'
+import { Clock, Check } from '@phosphor-icons/react'
 import type { CareTask } from '../api/types'
 import { statusColor } from '../theme'
 import { fmtDate } from '../format'
@@ -42,7 +41,7 @@ export default function CareTaskCard({
               {sub}
             </Typography>
             <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 1 }}>
-              <EventIcon sx={{ fontSize: 16, color }} />
+              <Clock size={16} weight="fill" color={color} />
               <Typography variant="body2" sx={{ color, fontWeight: 600 }}>
                 {dueLabel(task)}
               </Typography>
@@ -61,7 +60,7 @@ export default function CareTaskCard({
           disabled={completing}
           variant="contained"
           size="small"
-          startIcon={<CheckIcon />}
+          startIcon={<Check size={16} weight="bold" />}
         >
           Done
         </Button>

@@ -9,6 +9,15 @@ export interface Animal {
   species: string
   species_display: string
   breed: string
+  date_of_birth: string | null
+  active: boolean
+}
+
+export interface AuthUser {
+  id: number
+  username: string
+  person_id: number | null
+  person_name: string | null
 }
 
 export interface CareTask {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
+import '../auth_state.dart';
 import '../config.dart';
 import '../models/person.dart';
 import '../services/notification_service.dart';
@@ -112,6 +113,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _signOut() async {
+    await _api.logout();
+    signedIn.value = false; // RootGate swaps in the login screen
+    if (mounted) Navigator.of(context).pop(); // pop Settings to reveal it
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -120,6 +127,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          Text('Account', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (AppConfig.authUsername != null)
+            Text('Signed in as ${AppConfig.authUsername}.', style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: _signOut,
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign out'),
+            ),
+          ),
+          const Divider(height: 32),
           Text('API server', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           TextField(

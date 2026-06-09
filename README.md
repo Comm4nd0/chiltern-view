@@ -28,10 +28,11 @@ chiltern-view/
 | `EggRecord`      | Eggs collected per day (one row per day/source, unique).            |
 | `PotatoPlanting` | Seed-potato plantings that drive the growth timeline.               |
 
-`Person` is deliberately lightweight (just a name) — this is a no-login app on a
-trusted network. Deleting a person leaves their tasks intact but unassigned
-(`on_delete=SET_NULL`). The Flutter app remembers which person is "you" on each
-device (Settings → People) and defaults the dashboard to your tasks.
+`Person` is deliberately lightweight (just a name), optionally linked to a login
+account (`Person.user → auth.User`; see [Authentication](#authentication)).
+Deleting a person leaves their tasks intact but unassigned (`on_delete=SET_NULL`).
+The Flutter app remembers which person is "you" on each device (Settings → People)
+and defaults the dashboard to your tasks.
 
 `CareTask` computes `next_due`, `days_overdue` and `status`
 (`overdue`/`due_today`/`upcoming`) from `last_completed + recurrence_interval_days`.
@@ -49,6 +50,25 @@ This starts Postgres, the API (gunicorn) on port 8000, and the React web app
 (nginx) on `WEB_PORT` (default 8080). On boot the backend applies migrations and
 — if `DJANGO_SUPERUSER_USERNAME`/`PASSWORD` are set — creates an admin user.
 Health check: `GET /api/health/`. The web app is then at `http://luma001:8080`.
+
+## Authentication
+
+The API requires a login (DRF **token auth**). Every endpoint needs an
+`Authorization: Token <key>` header except `GET /api/health/` and
+`POST /api/auth/login/`. There's no sign-up — the household accounts are created
+by hand:
+
+1. Ensure an admin exists (the `DJANGO_SUPERUSER_*` env vars create one on first
+   container boot, or run `python manage.py createsuperuser`).
+2. In Django admin (`/admin/`) create a **User** for each person (Marco, Claire)
+   and set their password.
+3. Edit the matching **Person** record and set its **User** field, so the app can
+   show who's signed in and default task assignment to "you".
+
+Endpoints: `POST /api/auth/login/` `{username, password}` → `{token, user}`;
+`POST /api/auth/logout/` (revokes the token); `GET /api/auth/me/`. Both apps store
+the token (browser `localStorage` / `shared_preferences`), send it on every
+request, and return to the login screen on a `401`.
 
 ## Run the backend locally (no Docker)
 
