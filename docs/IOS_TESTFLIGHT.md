@@ -5,7 +5,7 @@ release after the initial setup. You need a **Mac with Xcode** and an **Apple
 Developer account** ($99/yr).
 
 App facts:
-- Bundle ID: `com.chilternview.chilternView`
+- Bundle ID: `uk.co.chilternview.app`
 - Display name: **Chiltern View**
 - Flutter project: `frontend/`
 
@@ -23,7 +23,7 @@ App facts:
    - Platform: iOS
    - Name: `Chiltern View` (must be globally unique on the store; tweak if taken,
      e.g. `Chiltern View — Smallholding`)
-   - Bundle ID: select/create `com.chilternview.chilternView`
+   - Bundle ID: select/create `uk.co.chilternview.app`
    - SKU: anything, e.g. `chilternview`
    You do **not** need to submit to the App Store — TestFlight only.
 3. **App Store Connect → Users and Access → add Claire** (her Apple ID email) as a
@@ -41,7 +41,7 @@ open ios/Runner.xcworkspace      # the .xcworkspace, not .xcodeproj
 In Xcode, select the **Runner** target → **Signing & Capabilities**:
 - Tick **Automatically manage signing**
 - **Team**: your Apple Developer team
-- Confirm **Bundle Identifier** = `com.chilternview.chilternView`
+- Confirm **Bundle Identifier** = `uk.co.chilternview.app`
 
 ## 3. First build & upload (from Xcode)
 
