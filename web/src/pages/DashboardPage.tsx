@@ -6,6 +6,7 @@ import { useMyPersonId } from '../config'
 import QueryBoundary from '../components/QueryBoundary'
 import CareTaskCard from '../components/CareTaskCard'
 import AddTaskDialog from '../components/AddTaskDialog'
+import type { CareTask } from '../api/types'
 
 export default function DashboardPage() {
   const myId = useMyPersonId()
@@ -14,6 +15,7 @@ export default function DashboardPage() {
   const dashboard = useDashboard(filter)
   const complete = useCompleteTask()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<CareTask | null>(null)
   const [snack, setSnack] = useState<string | null>(null)
   const [completingId, setCompletingId] = useState<number | null>(null)
 
@@ -68,6 +70,7 @@ export default function DashboardPage() {
                   task={t}
                   completing={completingId === t.id}
                   onComplete={() => onComplete(t.id, t.name)}
+                  onEdit={() => setEditing(t)}
                 />
               ))}
             </Stack>
@@ -83,7 +86,15 @@ export default function DashboardPage() {
       >
         <AddIcon />
       </Fab>
-      {dialogOpen && <AddTaskDialog onClose={() => setDialogOpen(false)} />}
+      {(dialogOpen || editing) && (
+        <AddTaskDialog
+          task={editing ?? undefined}
+          onClose={() => {
+            setDialogOpen(false)
+            setEditing(null)
+          }}
+        />
+      )}
       <Snackbar
         open={snack != null}
         autoHideDuration={3000}

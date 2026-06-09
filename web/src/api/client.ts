@@ -51,11 +51,14 @@ function decodeList<T>(data: unknown): T[] {
 
 export interface CreateTaskInput {
   name: string
-  recurrence_interval_days: number
+  recurrence_interval_days?: number
+  due_date?: string | null
   description?: string
   animal?: number | null
   assignee?: number | null
 }
+
+export type UpdateTaskInput = Partial<CreateTaskInput> & { active?: boolean }
 
 export interface CreateCropInput {
   crop: string
@@ -86,6 +89,9 @@ export const api = {
     }),
   createTask: (input: CreateTaskInput) =>
     request<CareTask>('/care-tasks/', { method: 'POST', body: JSON.stringify(input) }),
+  updateTask: (id: number, patch: UpdateTaskInput) =>
+    request<CareTask>(`/care-tasks/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteTask: (id: number) => request<void>(`/care-tasks/${id}/`, { method: 'DELETE' }),
 
   people: () => request<unknown>('/people/?ordering=name').then(decodeList<Person>),
   createPerson: (name: string) =>

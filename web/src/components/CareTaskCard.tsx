@@ -18,20 +18,26 @@ export default function CareTaskCard({
   task,
   onComplete,
   completing,
+  onEdit,
 }: {
   task: CareTask
   onComplete: () => void
   completing: boolean
+  onEdit?: () => void
 }) {
   const color = statusColor(task.status)
-  const sub = [task.animal_name, `every ${task.recurrence_interval_days} days`]
-    .filter(Boolean)
-    .join(' · ')
+  const recurrence = task.due_date ? 'one-off' : `every ${task.recurrence_interval_days} days`
+  const sub = [task.animal_name, recurrence].filter(Boolean).join(' · ')
 
   return (
     <Card sx={{ display: 'flex', overflow: 'hidden' }}>
       <Box sx={{ width: 6, bgcolor: color, flexShrink: 0 }} />
-      <CardContent sx={{ flex: 1, py: 1.5 }}>
+      <CardContent
+        sx={{ flex: 1, py: 1.5, cursor: onEdit ? 'pointer' : 'default' }}
+        onClick={onEdit}
+        role={onEdit ? 'button' : undefined}
+        aria-label={onEdit ? `Edit ${task.name}` : undefined}
+      >
         <Stack direction="row" alignItems="flex-start" spacing={1}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="subtitle1" fontWeight={600}>

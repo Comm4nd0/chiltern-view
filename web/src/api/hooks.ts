@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
+import type { UpdateTaskInput } from './client'
 
 export const keys = {
   dashboard: (assignee?: string) => ['dashboard', assignee ?? 'all'] as const,
@@ -83,6 +84,28 @@ export function useCreateTask() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: api.createTask,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
+export function useUpdateTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: number; patch: UpdateTaskInput }) => api.updateTask(id, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
+export function useDeleteTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.deleteTask(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['dashboard'] })
       qc.invalidateQueries({ queryKey: ['overview'] })

@@ -8,45 +8,95 @@ import {
   MenuItem,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
-import { useAnimals, useCreateTask, usePeople } from '../api/hooks'
+import {
+  useAnimals,
+  useCreateTask,
+  useDeleteTask,
+  usePeople,
+  useUpdateTask,
+} from '../api/hooks'
 import { useMyPersonId } from '../config'
+import type { CareTask } from '../api/types'
 
-export default function AddTaskDialog({ onClose }: { onClose: () => void }) {
+/** Create a new care task, or edit/delete an existing one when `task` is given. */
+export default function AddTaskDialog({
+  task,
+  onClose,
+}: {
+  task?: CareTask
+  onClose: () => void
+}) {
+  const editing = task != null
   const myId = useMyPersonId()
   const people = usePeople()
   const animals = useAnimals()
   const createTask = useCreateTask()
+  const updateTask = useUpdateTask()
+  const deleteTask = useDeleteTask()
 
-  const [name, setName] = useState('')
-  const [days, setDays] = useState('7')
-  const [assignee, setAssignee] = useState(myId != null ? String(myId) : '')
-  const [animal, setAnimal] = useState('')
+  const [name, setName] = useState(task?.name ?? '')
+  const [days, setDays] = useState(String(task?.recurrence_interval_days ?? 7))
+  const [repeats, setRepeats] = useState(task ? task.due_date == null : true)
+  const [dueDate, setDueDate] = useState(task?.due_date ?? new Date().toISOString().slice(0, 10))
+  const [assignee, setAssignee] = useState(
+    task?.assignee != null ? String(task.assignee) : myId != null ? String(myId) : '',
+  )
+  const [animal, setAnimal] = useState(task?.animal != null ? String(task.animal) : '')
   const [error, setError] = useState<string | null>(null)
 
+  const busy = createTask.isPending || updateTask.isPending || deleteTask.isPending
+
   const save = async () => {
-    const n = Number(days)
-    if (!name.trim() || !Number.isFinite(n) || n <= 0) {
-      setError('Enter a name and a positive interval.')
+    if (!name.trim()) {
+      setError('Enter a task name.')
       return
     }
+    const base = {
+      name: name.trim(),
+      assignee: assignee ? Number(assignee) : null,
+      animal: animal ? Number(animal) : null,
+    }
+    let payload
+    if (repeats) {
+      const n = Number(days)
+      if (!Number.isFinite(n) || n <= 0) {
+        setError('Enter a positive interval.')
+        return
+      }
+      payload = { ...base, recurrence_interval_days: n, due_date: null }
+    } else {
+      if (!dueDate) {
+        setError('Pick a due date.')
+        return
+      }
+      payload = { ...base, due_date: dueDate }
+    }
     try {
-      await createTask.mutateAsync({
-        name: name.trim(),
-        recurrence_interval_days: n,
-        assignee: assignee ? Number(assignee) : null,
-        animal: animal ? Number(animal) : null,
-      })
+      if (editing) await updateTask.mutateAsync({ id: task.id, patch: payload })
+      else await createTask.mutateAsync(payload)
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.')
     }
   }
 
+  const remove = async () => {
+    if (!editing) return
+    try {
+      await deleteTask.mutateAsync(task.id)
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete.')
+    }
+  }
+
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>New care task</DialogTitle>
+      <DialogTitle>{editing ? 'Edit task' : 'New care task'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
@@ -56,12 +106,35 @@ export default function AddTaskDialog({ onClose }: { onClose: () => void }) {
             autoFocus
             required
           />
-          <TextField
-            label="Repeat every (days)"
-            type="number"
-            value={days}
-            onChange={(e) => setDays(e.target.value)}
-          />
+          <ToggleButtonGroup
+            exclusive
+            fullWidth
+            color="primary"
+            size="small"
+            value={repeats ? 'repeats' : 'oneoff'}
+            onChange={(_, v) => {
+              if (v) setRepeats(v === 'repeats')
+            }}
+          >
+            <ToggleButton value="repeats">Repeats</ToggleButton>
+            <ToggleButton value="oneoff">One-off</ToggleButton>
+          </ToggleButtonGroup>
+          {repeats ? (
+            <TextField
+              label="Repeat every (days)"
+              type="number"
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+            />
+          ) : (
+            <TextField
+              label="Due date"
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          )}
           <TextField
             select
             label="Assign to"
@@ -96,9 +169,14 @@ export default function AddTaskDialog({ onClose }: { onClose: () => void }) {
         </Stack>
       </DialogContent>
       <DialogActions>
+        {editing && (
+          <Button color="error" onClick={remove} disabled={busy} sx={{ mr: 'auto' }}>
+            Delete
+          </Button>
+        )}
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={save} disabled={createTask.isPending}>
-          Add
+        <Button variant="contained" onClick={save} disabled={busy}>
+          {editing ? 'Save' : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>

@@ -10,6 +10,7 @@ class CareTask {
   final String? assigneeName;
   final int recurrenceIntervalDays;
   final DateTime? lastCompleted;
+  final DateTime? dueDate; // set => one-off task (doesn't repeat)
   final bool active;
   final DateTime nextDue;
   final int daysOverdue; // >0 overdue, 0 due today, <0 upcoming
@@ -25,6 +26,7 @@ class CareTask {
     required this.assigneeName,
     required this.recurrenceIntervalDays,
     required this.lastCompleted,
+    this.dueDate,
     required this.active,
     required this.nextDue,
     required this.daysOverdue,
@@ -41,6 +43,7 @@ class CareTask {
         assigneeName: json['assignee_name'] as String?,
         recurrenceIntervalDays: json['recurrence_interval_days'] as int? ?? 0,
         lastCompleted: asNullableDate(json['last_completed']),
+        dueDate: asNullableDate(json['due_date']),
         active: json['active'] as bool? ?? true,
         nextDue: asDate(json['next_due']),
         daysOverdue: json['days_overdue'] as int? ?? 0,
@@ -48,6 +51,9 @@ class CareTask {
       );
 
   bool get isOverdue => status == 'overdue';
+
+  /// One-off tasks have a fixed due date and don't repeat.
+  bool get isOneOff => dueDate != null;
 
   /// Human-friendly urgency label for the dashboard.
   String get dueLabel {

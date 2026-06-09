@@ -140,7 +140,8 @@ class ApiClient {
 
   Future<CareTask> createCareTask({
     required String name,
-    required int recurrenceIntervalDays,
+    int recurrenceIntervalDays = 7,
+    DateTime? dueDate,
     int? animal,
     int? assignee,
     String description = '',
@@ -151,6 +152,7 @@ class ApiClient {
       body: jsonEncode({
         'name': name,
         'recurrence_interval_days': recurrenceIntervalDays,
+        'due_date': dueDate != null ? _ymd(dueDate) : null,
         'description': description,
         if (animal != null) 'animal': animal,
         if (assignee != null) 'assignee': assignee,
@@ -158,6 +160,36 @@ class ApiClient {
     );
     _check(res);
     return CareTask.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  /// Edit an existing task. Sends only the form-controlled fields, so an unset
+  /// animal/assignee (null) clears the link rather than leaving it untouched.
+  Future<CareTask> updateCareTask(
+    int id, {
+    required String name,
+    required int recurrenceIntervalDays,
+    DateTime? dueDate,
+    int? animal,
+    int? assignee,
+  }) async {
+    final res = await _client.patch(
+      _uri('/care-tasks/$id/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'name': name,
+        'recurrence_interval_days': recurrenceIntervalDays,
+        'due_date': dueDate != null ? _ymd(dueDate) : null, // null clears => repeats
+        'animal': animal,
+        'assignee': assignee,
+      }),
+    );
+    _check(res);
+    return CareTask.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteCareTask(int id) async {
+    final res = await _client.delete(_uri('/care-tasks/$id/'), headers: _headers());
+    _check(res);
   }
 
   // --- People -------------------------------------------------------------

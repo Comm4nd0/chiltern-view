@@ -46,15 +46,21 @@ class AssigneeAvatar extends StatelessWidget {
 class CareTaskCard extends StatelessWidget {
   final CareTask task;
   final Future<void> Function() onComplete;
+  final VoidCallback? onEdit;
 
-  const CareTaskCard({super.key, required this.task, required this.onComplete});
+  const CareTaskCard({
+    super.key,
+    required this.task,
+    required this.onComplete,
+    this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
     final color = AppTheme.statusColor(task.status);
     final subtitle = <String>[
       if (task.animalName != null) task.animalName!,
-      'every ${task.recurrenceIntervalDays} days',
+      task.isOneOff ? 'one-off' : 'every ${task.recurrenceIntervalDays} days',
     ].join(' · ');
 
     return Card(
@@ -64,41 +70,44 @@ class CareTaskCard extends StatelessWidget {
           children: [
             Container(width: 6, color: color),
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(task.name, style: Theme.of(context).textTheme.titleMedium),
-                        ),
-                        if (task.assigneeName != null) ...[
-                          const SizedBox(width: 8),
-                          AssigneeAvatar(name: task.assigneeName!),
+              child: InkWell(
+                onTap: onEdit,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(task.name, style: Theme.of(context).textTheme.titleMedium),
+                          ),
+                          if (task.assigneeName != null) ...[
+                            const SizedBox(width: 8),
+                            AssigneeAvatar(name: task.assigneeName!),
+                          ],
                         ],
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Icon(PhosphorIcons.clock(PhosphorIconsStyle.fill), size: 16, color: color),
-                        const SizedBox(width: 4),
-                        Text(
-                          task.dueLabel,
-                          style: TextStyle(color: color, fontWeight: FontWeight.w600),
-                        ),
-                        const Spacer(),
-                        Text(
-                          DateFormat('d MMM').format(task.nextDue),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(PhosphorIcons.clock(PhosphorIconsStyle.fill), size: 16, color: color),
+                          const SizedBox(width: 4),
+                          Text(
+                            task.dueLabel,
+                            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+                          ),
+                          const Spacer(),
+                          Text(
+                            DateFormat('d MMM').format(task.nextDue),
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

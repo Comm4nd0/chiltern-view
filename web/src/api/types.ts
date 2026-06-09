@@ -30,6 +30,7 @@ export interface CareTask {
   assignee_name: string | null
   recurrence_interval_days: number
   last_completed: string | null
+  due_date: string | null
   active: boolean
   next_due: string
   days_overdue: number
