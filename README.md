@@ -1,7 +1,8 @@
 # Chiltern View
 
 A smallholding tracker: a **Django + DRF** REST backend (containerised for the
-Luma001 Docker host) and a **Flutter** app for day-to-day use.
+Luma001 Docker host), a **Flutter** mobile app, and a **React** web app. The web
+and mobile apps are kept at feature parity (see [CLAUDE.md](CLAUDE.md)).
 
 ```
 chiltern-view/
@@ -10,8 +11,9 @@ chiltern-view/
 │   ├── tracker/        models, serializers, viewsets, admin
 │   ├── Dockerfile
 │   └── requirements.txt
-├── frontend/           Flutter app (dashboard, potato timeline, egg log)
-├── docker-compose.yml  Postgres + backend, for Luma001
+├── frontend/           Flutter app — mobile (iOS/Android)
+├── web/                React + TypeScript web app (Vite, MUI, nginx)
+├── docker-compose.yml  Postgres + backend + web, for Luma001
 └── .env.example        copy to .env and edit before deploying
 ```
 
@@ -43,9 +45,10 @@ cp .env.example .env          # then edit secrets / allowed hosts
 docker compose up -d --build
 ```
 
-This starts Postgres and the API (gunicorn) on port 8000. On boot the backend
-applies migrations and — if `DJANGO_SUPERUSER_USERNAME`/`PASSWORD` are set —
-creates an admin user. Health check: `GET /api/health/`.
+This starts Postgres, the API (gunicorn) on port 8000, and the React web app
+(nginx) on `WEB_PORT` (default 8080). On boot the backend applies migrations and
+— if `DJANGO_SUPERUSER_USERNAME`/`PASSWORD` are set — creates an admin user.
+Health check: `GET /api/health/`. The web app is then at `http://luma001:8080`.
 
 ## Run the backend locally (no Docker)
 
@@ -89,6 +92,24 @@ flutter run            # or: flutter run -d chrome / -d windows
 Set the API address in-app (gear icon → Settings) — e.g. `http://luma001:8000/api`.
 See [frontend/README.md](frontend/README.md) for per-platform URLs.
 
+## Run the web app
+
+In production it's built and served by nginx as part of `docker compose up`
+(above), at `http://luma001:8080`. nginx serves the SPA and reverse-proxies
+`/api` to the backend, so the web app is same-origin — no API URL to configure.
+
+For local development:
+
+```bash
+cd web
+npm install
+npm run dev            # Vite dev server on http://localhost:5173
+```
+
+The dev server proxies `/api` to `http://localhost:8000`, so run the backend too.
+Checked with `npm run build` (tsc + Vite) and `npm run lint`. See
+[web/README.md](web/README.md).
+
 ## Reminders (on-device)
 
 Each phone shows local notifications reminding **its** person of their tasks —
@@ -125,7 +146,8 @@ permits the app's plain-HTTP calls to Luma001 over the local network
 
 - Backend: migrations generated, `manage.py check` clean, 13/13 API smoke checks
   passed (overdue ranking, task completion, egg counter, potato stages).
-- Frontend: `flutter analyze` clean, `flutter test` passing.
+- Frontend (Flutter): `flutter analyze` clean, `flutter test` passing.
+- Web (React): `npm run build` (tsc + Vite) clean, `npm run lint` clean.
 - Reminders: Dart layer verified (analyze + tests). The iOS/Android **native build
   wasn't compiled here** (no Mac; Windows can't build iOS, and plugin builds need
   Developer Mode) — the native config follows the flutter_local_notifications docs.
@@ -135,6 +157,6 @@ permits the app's plain-HTTP calls to Luma001 over the local network
 ## Notes
 
 - Source is on GitHub: <https://github.com/Comm4nd0/chiltern-view>.
-- The Flutter UI logic (overdue ranking, potato stages, egg counter) mirrors the
-  backend's computed fields and is structured to fold in your React prototype's
-  exact logic when you share it.
+- Web and mobile share the Django API and are kept at feature parity per
+  [CLAUDE.md](CLAUDE.md). Known gap: task reminders exist on mobile (on-device
+  notifications) but not yet on web (would need browser Web Push).

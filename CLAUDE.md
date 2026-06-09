@@ -1,9 +1,9 @@
 # Chiltern View — project guide for Claude
 
 Smallholding tracker: a **Django + DRF** backend (Docker, runs on the **Luma001**
-home server) and a **Flutter** app (`frontend/`) — "what needs doing" dashboard,
-potato growth timeline, egg log, per-person task assignment, and on-device
-reminders. See [README.md](README.md) for the full picture.
+home server), a **Flutter** mobile app (`frontend/`), and a **React** web app
+(`web/`) — "what needs doing" dashboard, potato growth timeline, egg log, and
+per-person task assignment. See [README.md](README.md) for the full picture.
 
 ## ⚠️ Web and mobile must stay in lockstep (non-negotiable)
 
@@ -12,24 +12,29 @@ the same functionality.** If a feature, screen, or behaviour is added or changed
 on one, it MUST be added or changed on the other as part of the same work. Never
 ship a feature to only one platform.
 
-- Today both run from the **single Flutter codebase** in `frontend/` (Flutter
-  builds web and iOS/Android from the same source), so parity is automatic — keep
-  it that way. If a separate web app is ever introduced, this rule still holds:
-  every change lands on both, together.
-- Before considering any user-facing change done, confirm it builds and works for
-  **both web and mobile** (`flutter analyze` + `flutter test`, and a web + device
-  smoke check).
+- **Two codebases, one API.** The web app is **React + TypeScript** in `web/`; the
+  mobile app is **Flutter** in `frontend/`. They are separate front-ends over the
+  same Django API. A feature added to one MUST be added to the other in the same
+  piece of work.
+- Before considering any user-facing change done, implement and verify it on
+  **both**: web (`cd web && npm run build && npm run lint`) and mobile
+  (`cd frontend && flutter analyze && flutter test`).
+- Current known gap to close: **reminders** exist on mobile (on-device
+  notifications) but not yet on web (would need browser Web Push).
 
 ## Layout
 - `backend/` — Django + DRF API (models, serializers, viewsets). Dockerised.
-- `frontend/` — Flutter app for web + iOS/Android; app code in `lib/`.
-- `docs/IOS_TESTFLIGHT.md` — getting the app onto iPhones via TestFlight.
+- `frontend/` — Flutter mobile app (iOS/Android); app code in `lib/`.
+- `web/` — React + TypeScript web app (Vite, MUI, React Query); served by nginx.
+- `docs/IOS_TESTFLIGHT.md` — getting the mobile app onto iPhones via TestFlight.
 
 ## Common commands
-- Backend (Docker, primary): `docker compose up -d --build`
-- Backend (local dev): make a venv in `backend/`, `pip install -r backend/requirements.txt`, then `python backend/manage.py runserver`
+- Whole stack (Docker): `docker compose up -d --build` (db + backend + web)
+- Backend (local dev): venv in `backend/`, `pip install -r backend/requirements.txt`, then `python backend/manage.py runserver`
+- Web checks: `cd web && npm run build && npm run lint`
+- Web dev server: `cd web && npm run dev`
 - Flutter checks: `cd frontend && flutter analyze && flutter test`
-- Flutter run: `flutter run -d chrome` (web) · `flutter run` (device)
+- Flutter run: `flutter run` (device)
 
 ## Conventions
 - Backend is no-login (trusted LAN); "people" are lightweight name records, not

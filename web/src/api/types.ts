@@ -1,0 +1,65 @@
+export interface Person {
+  id: number
+  name: string
+}
+
+export interface Animal {
+  id: number
+  name: string
+  species: string
+  species_display: string
+}
+
+export interface CareTask {
+  id: number
+  name: string
+  description: string
+  animal: number | null
+  animal_name: string | null
+  assignee: number | null
+  assignee_name: string | null
+  recurrence_interval_days: number
+  last_completed: string | null
+  active: boolean
+  next_due: string
+  days_overdue: number
+  status: 'overdue' | 'due_today' | 'upcoming'
+}
+
+export interface PotatoStage {
+  label: string
+  date: string
+}
+
+export interface PotatoPlanting {
+  id: number
+  variety: string
+  category: string
+  category_display: string
+  planted_on: string
+  quantity: number | null
+  bed: string
+  expected_harvest: string | null
+  harvested_on: string | null
+  yield_kg: string | null
+  notes: string
+  estimated_harvest: string
+  current_stage: string
+  progress: number
+  stages: PotatoStage[]
+}
+
+export interface EggRecord {
+  id: number
+  date: string
+  count: number
+  source: string
+  notes: string
+}
+
+export interface EggSummary {
+  today: number
+  this_week: number
+  this_month: number
+  total: number
+}

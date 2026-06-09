@@ -1,0 +1,71 @@
+import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material'
+import EventIcon from '@mui/icons-material/Event'
+import CheckIcon from '@mui/icons-material/Check'
+import type { CareTask } from '../api/types'
+import { statusColor } from '../theme'
+import { fmtDate } from '../format'
+import AssigneeAvatar from './AssigneeAvatar'
+
+function dueLabel(task: CareTask): string {
+  if (task.status === 'due_today') return 'Due today'
+  if (task.days_overdue > 0) {
+    return `${task.days_overdue} day${task.days_overdue === 1 ? '' : 's'} overdue`
+  }
+  const inDays = -task.days_overdue
+  return `Due in ${inDays} day${inDays === 1 ? '' : 's'}`
+}
+
+export default function CareTaskCard({
+  task,
+  onComplete,
+  completing,
+}: {
+  task: CareTask
+  onComplete: () => void
+  completing: boolean
+}) {
+  const color = statusColor(task.status)
+  const sub = [task.animal_name, `every ${task.recurrence_interval_days} days`]
+    .filter(Boolean)
+    .join(' · ')
+
+  return (
+    <Card sx={{ display: 'flex', overflow: 'hidden' }}>
+      <Box sx={{ width: 6, bgcolor: color, flexShrink: 0 }} />
+      <CardContent sx={{ flex: 1, py: 1.5 }}>
+        <Stack direction="row" alignItems="flex-start" spacing={1}>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography variant="subtitle1" fontWeight={600}>
+              {task.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {sub}
+            </Typography>
+            <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 1 }}>
+              <EventIcon sx={{ fontSize: 16, color }} />
+              <Typography variant="body2" sx={{ color, fontWeight: 600 }}>
+                {dueLabel(task)}
+              </Typography>
+              <Box sx={{ flex: 1 }} />
+              <Typography variant="caption" color="text.secondary">
+                {fmtDate(task.next_due)}
+              </Typography>
+            </Stack>
+          </Box>
+          {task.assignee_name && <AssigneeAvatar name={task.assignee_name} />}
+        </Stack>
+      </CardContent>
+      <Box sx={{ display: 'flex', alignItems: 'center', pr: 1 }}>
+        <Button
+          onClick={onComplete}
+          disabled={completing}
+          variant="contained"
+          size="small"
+          startIcon={<CheckIcon />}
+        >
+          Done
+        </Button>
+      </Box>
+    </Card>
+  )
+}
