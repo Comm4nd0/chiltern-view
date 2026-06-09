@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'api/api_client.dart';
 import 'auth_state.dart';
@@ -117,7 +118,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         title: Text(_titles[_index]),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: Icon(PhosphorIcons.gear()),
             tooltip: 'Settings',
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
@@ -129,25 +130,25 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: Icon(PhosphorIcons.house()),
+            selectedIcon: Icon(PhosphorIcons.house(PhosphorIconsStyle.fill)),
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.checklist_outlined),
-            selectedIcon: Icon(Icons.checklist),
+            icon: Icon(PhosphorIcons.listChecks()),
+            selectedIcon: Icon(PhosphorIcons.listChecks(PhosphorIconsStyle.fill)),
             label: 'To do',
           ),
           NavigationDestination(
-            icon: Icon(Icons.grass_outlined),
-            selectedIcon: Icon(Icons.grass),
+            icon: Icon(PhosphorIcons.plant()),
+            selectedIcon: Icon(PhosphorIcons.plant(PhosphorIconsStyle.fill)),
             label: 'Crops',
           ),
           NavigationDestination(
-            icon: Icon(Icons.pets_outlined),
-            selectedIcon: Icon(Icons.pets),
+            icon: Icon(PhosphorIcons.pawPrint()),
+            selectedIcon: Icon(PhosphorIcons.pawPrint(PhosphorIconsStyle.fill)),
             label: 'Animals',
           ),
         ],

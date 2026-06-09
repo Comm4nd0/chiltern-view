@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../api/api_client.dart';
 import '../auth_state.dart';
@@ -64,8 +65,17 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.agriculture, size: 56, color: theme.colorScheme.primary),
-                const SizedBox(height: 12),
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(PhosphorIcons.plant(PhosphorIconsStyle.fill),
+                      size: 40, color: theme.colorScheme.primary),
+                ),
+                const SizedBox(height: 16),
                 Text(
                   'Chiltern View',
                   textAlign: TextAlign.center,

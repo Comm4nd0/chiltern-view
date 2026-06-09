@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../api/api_client.dart';
 import '../models/overview.dart';
@@ -8,6 +9,32 @@ import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/care_task_card.dart'; // AssigneeAvatar
 import 'egg_log_screen.dart';
+
+// Per-section accent colours (iOS-style varied tints).
+const _teal = Color(0xFF00796B);
+const _green = Color(0xFF34C759);
+const _orange = Color(0xFFFF9500);
+const _blue = Color(0xFF007AFF);
+
+/// A rounded, tinted square holding an icon — the iOS Settings-row motif.
+class _IconTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  const _IconTile(this.icon, this.color);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Icon(icon, color: color, size: 22),
+    );
+  }
+}
 
 /// Home / front page: an at-a-glance overview of the whole holding.
 class OverviewScreen extends StatefulWidget {
@@ -55,14 +82,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
         onRetry: _refresh,
         builder: (context, o) => ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             _needsDoing(context, o),
-            const SizedBox(height: 8),
             _crops(context, o),
-            const SizedBox(height: 8),
             _eggs(context, o),
-            const SizedBox(height: 8),
             _animals(context, o),
           ],
         ),
@@ -71,7 +95,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   Widget _needsDoing(BuildContext context, Overview o) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -80,14 +103,14 @@ class _OverviewScreenState extends State<OverviewScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.checklist, color: primary),
-                const SizedBox(width: 8),
+                _IconTile(PhosphorIcons.listChecks(PhosphorIconsStyle.fill), _teal),
+                const SizedBox(width: 12),
                 Text('Needs doing', style: Theme.of(context).textTheme.titleLarge),
                 const Spacer(),
                 TextButton(onPressed: () => widget.onOpenTab(1), child: const Text('All tasks')),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 _pill(context, 'overdue', o.tasksOverdue, AppTheme.statusColor('overdue')),
@@ -97,9 +120,19 @@ class _OverviewScreenState extends State<OverviewScreen> {
                 _pill(context, 'upcoming', o.tasksUpcoming, AppTheme.statusColor('upcoming')),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             if (o.topTasks.isEmpty)
-              Text('All caught up.', style: Theme.of(context).textTheme.bodyMedium)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Row(
+                  children: [
+                    Icon(PhosphorIcons.checkCircle(PhosphorIconsStyle.fill),
+                        size: 20, color: _green),
+                    const SizedBox(width: 8),
+                    Text('All caught up.', style: Theme.of(context).textTheme.bodyMedium),
+                  ],
+                ),
+              )
             else
               ...o.topTasks.map((t) => _topTask(context, t)),
           ],
@@ -111,7 +144,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
   Widget _topTask(BuildContext context, OverviewTask t) {
     final color = AppTheme.statusColor(t.status);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Container(
@@ -119,13 +152,17 @@ class _OverviewScreenState extends State<OverviewScreen> {
             height: 8,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                Text(t.dueLabel, style: TextStyle(color: color, fontSize: 12)),
+                Text(t.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(t.dueLabel,
+                    style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
               ],
             ),
           ),
@@ -145,18 +182,22 @@ class _OverviewScreenState extends State<OverviewScreen> {
   Widget _pill(BuildContext context, String label, int value, Color color) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           children: [
             Text(
               '$value',
-              style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 22),
+              style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 24),
             ),
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
+            Text(label,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(fontWeight: FontWeight.w600)),
           ],
         ),
       ),
@@ -169,17 +210,17 @@ class _OverviewScreenState extends State<OverviewScreen> {
     if (o.cropsGrowing == 0) {
       subtitle = 'nothing growing';
     } else if (nh != null) {
-      subtitle = 'growing · next harvest ${nh.label} ~ ${DateFormat('d MMM').format(nh.date)}';
+      subtitle = 'next harvest ${nh.label} ~ ${DateFormat('d MMM').format(nh.date)}';
     } else {
       subtitle = 'growing';
     }
-    return _section(context, Icons.grass, 'Crops', '${o.cropsGrowing}', subtitle,
-        () => widget.onOpenTab(2));
+    return _section(context, PhosphorIcons.plant(PhosphorIconsStyle.fill), _green, 'Crops',
+        '${o.cropsGrowing}', subtitle, () => widget.onOpenTab(2));
   }
 
   Widget _eggs(BuildContext context, Overview o) {
-    return _section(context, Icons.egg, 'Eggs', '${o.eggsToday}',
-        'today · ${o.eggsThisWeek} this week', () => _openEggs(context));
+    return _section(context, PhosphorIcons.egg(PhosphorIconsStyle.fill), _orange, 'Eggs',
+        '${o.eggsToday}', 'today · ${o.eggsThisWeek} this week', () => _openEggs(context));
   }
 
   void _openEggs(BuildContext context) {
@@ -192,7 +233,6 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   Widget _animals(BuildContext context, Overview o) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Card(
       child: InkWell(
         onTap: () => widget.onOpenTab(3),
@@ -203,17 +243,19 @@ class _OverviewScreenState extends State<OverviewScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.pets, color: primary),
-                  const SizedBox(width: 8),
-                  Text('Animals', style: Theme.of(context).textTheme.titleLarge),
-                  const Spacer(),
+                  _IconTile(PhosphorIcons.pawPrint(PhosphorIconsStyle.fill), _blue),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Animals', style: Theme.of(context).textTheme.titleMedium),
+                  ),
                   Text('${o.animalsTotal}', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(width: 6),
+                  Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
+                      size: 16, color: Colors.black26),
                 ],
               ),
-              const SizedBox(height: 8),
-              if (o.bySpecies.isEmpty)
-                Text('none yet', style: Theme.of(context).textTheme.bodyMedium)
-              else
+              if (o.bySpecies.isNotEmpty) ...[
+                const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
@@ -222,9 +264,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
                       Chip(
                         label: Text('${e.key}: ${e.value}'),
                         visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                   ],
                 ),
+              ],
             ],
           ),
         ),
@@ -232,28 +276,34 @@ class _OverviewScreenState extends State<OverviewScreen> {
     );
   }
 
-  Widget _section(BuildContext context, IconData icon, String title, String value,
+  Widget _section(BuildContext context, IconData icon, Color color, String title, String value,
       String subtitle, VoidCallback onTap) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Card(
       child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Icon(icon, color: primary),
-                  const SizedBox(width: 8),
-                  Text(title, style: Theme.of(context).textTheme.titleLarge),
-                  const Spacer(),
-                  Text(value, style: Theme.of(context).textTheme.titleLarge),
-                ],
+              _IconTile(icon, color),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                ),
               ),
-              const SizedBox(height: 4),
-              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              Text(value, style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(width: 6),
+              Icon(PhosphorIcons.caretRight(PhosphorIconsStyle.bold),
+                  size: 16, color: Colors.black26),
             ],
           ),
         ),

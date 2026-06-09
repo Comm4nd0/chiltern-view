@@ -1,4 +1,5 @@
 import { Box, Card, CardContent, Chip, LinearProgress, Stack, Typography } from '@mui/material'
+import { Plant, CheckCircle, Circle } from '@phosphor-icons/react'
 import type { Crop } from '../api/types'
 import { fmtDate } from '../format'
 
@@ -10,6 +11,7 @@ export default function CropCard({ crop }: { crop: Crop }) {
     <Card>
       <CardContent>
         <Stack direction="row" alignItems="center" spacing={1}>
+          <Plant size={18} weight="fill" color="#34C759" />
           <Typography variant="subtitle1" fontWeight={600} sx={{ flex: 1 }}>
             {crop.crop_label}
           </Typography>
@@ -26,17 +28,16 @@ export default function CropCard({ crop }: { crop: Crop }) {
             {crop.stages.map((stage, i) => {
               const reached = crop.harvested_on != null || (currentIndex >= 0 && i <= currentIndex)
               const isCurrent = stage.label === crop.current_stage
+              const color = reached ? '#00796B' : 'rgba(60,60,67,0.25)'
               return (
                 <Box key={stage.label} sx={{ width: 92, textAlign: 'center' }}>
-                  <Box
-                    sx={{
-                      width: isCurrent ? 16 : 10,
-                      height: isCurrent ? 16 : 10,
-                      borderRadius: '50%',
-                      mx: 'auto',
-                      bgcolor: reached ? 'primary.main' : 'action.disabled',
-                    }}
-                  />
+                  <Box sx={{ height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {isCurrent ? (
+                      <CheckCircle size={18} weight="fill" color={color} />
+                    ) : (
+                      <Circle size={12} weight={reached ? 'fill' : 'regular'} color={color} />
+                    )}
+                  </Box>
                   <Typography variant="caption" display="block" fontWeight={isCurrent ? 700 : 400}>
                     {stage.label}
                   </Typography>

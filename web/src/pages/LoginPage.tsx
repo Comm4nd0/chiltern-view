@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material'
+import { Plant } from '@phosphor-icons/react'
 import { api } from '../api/client'
 import { setAuth } from '../api/auth'
 import { getMyPersonId, setMyPersonId } from '../config'
@@ -38,7 +39,23 @@ export default function LoginPage() {
     >
       <Card sx={{ width: '100%', maxWidth: 360 }}>
         <CardContent>
-          <Typography variant="h5" align="center">
+          <Box
+            sx={{
+              width: 64,
+              height: 64,
+              borderRadius: 4,
+              mx: 'auto',
+              mb: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: 'rgba(0,121,107,0.12)',
+              color: 'primary.main',
+            }}
+          >
+            <Plant size={36} weight="fill" />
+          </Box>
+          <Typography variant="h5" align="center" fontWeight={800}>
             Chiltern View
           </Typography>
           <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 2 }}>

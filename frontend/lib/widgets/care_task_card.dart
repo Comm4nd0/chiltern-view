@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../models/care_task.dart';
 import '../theme.dart';
@@ -84,7 +85,7 @@ class CareTaskCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.event, size: 16, color: color),
+                        Icon(PhosphorIcons.clock(PhosphorIconsStyle.fill), size: 16, color: color),
                         const SizedBox(width: 4),
                         Text(
                           task.dueLabel,
@@ -106,7 +107,7 @@ class CareTaskCard extends StatelessWidget {
               child: Center(
                 child: FilledButton.tonalIcon(
                   onPressed: onComplete,
-                  icon: const Icon(Icons.check, size: 18),
+                  icon: Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 16),
                   label: const Text('Done'),
                 ),
               ),

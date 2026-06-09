@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../models/crop.dart';
 
@@ -23,6 +24,9 @@ class CropCard extends StatelessWidget {
           children: [
             Row(
               children: [
+                Icon(PhosphorIcons.plant(PhosphorIconsStyle.fill),
+                    size: 18, color: const Color(0xFF34C759)),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(crop.cropLabel, style: theme.textTheme.titleMedium),
                 ),
@@ -85,8 +89,10 @@ class _StageStrip extends StatelessWidget {
                 children: [
                   Icon(
                     stage.label == crop.currentStage
-                        ? Icons.radio_button_checked
-                        : Icons.circle,
+                        ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill)
+                        : (_reached(stage.label)
+                            ? PhosphorIcons.circle(PhosphorIconsStyle.fill)
+                            : PhosphorIcons.circle()),
                     size: stage.label == crop.currentStage ? 18 : 12,
                     color: _reached(stage.label) ? primary : theme.colorScheme.outlineVariant,
                   ),
