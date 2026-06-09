@@ -46,15 +46,18 @@ class LogEntrySerializer(serializers.ModelSerializer):
     entry_type_display = serializers.CharField(source="get_entry_type_display", read_only=True)
     animal_name = serializers.CharField(source="animal.name", read_only=True, default=None)
     care_task_name = serializers.CharField(source="care_task.name", read_only=True, default=None)
+    created_by_name = serializers.CharField(source="created_by.name", read_only=True, default=None)
 
     class Meta:
         model = LogEntry
         fields = [
             "id", "entry_type", "entry_type_display", "note",
             "animal", "animal_name", "care_task", "care_task_name",
+            "created_by", "created_by_name",
             "occurred_on", "created_at",
         ]
-        read_only_fields = ["created_at"]
+        # created_by is stamped from the logged-in user, not client-supplied.
+        read_only_fields = ["created_at", "created_by"]
 
 
 class EggRecordSerializer(serializers.ModelSerializer):

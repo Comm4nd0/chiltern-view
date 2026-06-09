@@ -8,6 +8,7 @@ import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/care_task_card.dart'; // AssigneeAvatar
+import 'animal_detail_screen.dart';
 import 'egg_log_screen.dart';
 
 // Per-section accent colours (iOS-style varied tints).
@@ -15,6 +16,7 @@ const _teal = Color(0xFF00796B);
 const _green = Color(0xFF34C759);
 const _orange = Color(0xFFFF9500);
 const _blue = Color(0xFF007AFF);
+const _purple = Color(0xFFAF52DE);
 
 /// A rounded, tinted square holding an icon — the iOS Settings-row motif.
 class _IconTile extends StatelessWidget {
@@ -88,6 +90,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
             _crops(context, o),
             _eggs(context, o),
             _animals(context, o),
+            if (o.activity.isNotEmpty) _recentNotes(context, o),
           ],
         ),
       ),
@@ -271,6 +274,60 @@ class _OverviewScreenState extends State<OverviewScreen> {
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// The latest hand-written journal notes (task completions excluded).
+  Widget _recentNotes(BuildContext context, Overview o) {
+    final dateFmt = DateFormat('d MMM');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _IconTile(PhosphorIcons.notebook(PhosphorIconsStyle.fill), _purple),
+                const SizedBox(width: 12),
+                Text('Recent notes', style: Theme.of(context).textTheme.titleLarge),
+              ],
+            ),
+            const SizedBox(height: 8),
+            for (final entry in o.activity)
+              InkWell(
+                onTap: entry.animal == null
+                    ? null
+                    : () async {
+                        await Navigator.of(context).push(MaterialPageRoute<void>(
+                          builder: (_) => AnimalDetailScreen(animalId: entry.animal!),
+                        ));
+                        _refresh();
+                      },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(entry.note,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodyMedium),
+                      Text(
+                        [
+                          if (entry.animalName != null) entry.animalName!,
+                          dateFmt.format(entry.occurredOn),
+                          if (entry.createdByName != null) entry.createdByName!,
+                        ].join(' · '),
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

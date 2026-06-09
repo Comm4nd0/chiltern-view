@@ -198,6 +198,14 @@ class LogEntry(models.Model):
     care_task = models.ForeignKey(
         CareTask, null=True, blank=True, on_delete=models.SET_NULL, related_name="log_entries"
     )
+    created_by = models.ForeignKey(
+        Person,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="log_entries",
+        help_text="Who wrote the note. Blank for system entries (task completions, harvests).",
+    )
     occurred_on = models.DateField(default=timezone.localdate)
     created_at = models.DateTimeField(auto_now_add=True)
 

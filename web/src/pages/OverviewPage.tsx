@@ -13,6 +13,7 @@ import {
 } from '@mui/material'
 import {
   ListChecks,
+  Notebook,
   PawPrint,
   Plant,
   Egg,
@@ -235,6 +236,38 @@ export default function OverviewPage() {
               </Stack>
             )}
           </SummaryCard>
+
+          {/* The latest hand-written journal notes (task completions excluded). */}
+          {data.activity.length > 0 && (
+            <Card>
+              <CardContent>
+                <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
+                  <IconTile icon={Notebook} color="#AF52DE" />
+                  <Typography variant="h6">Recent notes</Typography>
+                </Stack>
+                <Stack divider={<Divider />}>
+                  {data.activity.map((entry) => (
+                    <Box
+                      key={entry.id}
+                      sx={{ py: 1, cursor: entry.animal != null ? 'pointer' : 'default' }}
+                      onClick={() =>
+                        entry.animal != null && navigate(`/animals/${entry.animal}`)
+                      }
+                    >
+                      <Typography variant="body2" noWrap>
+                        {entry.note}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {[entry.animal_name, fmtDate(entry.occurred_on), entry.created_by_name]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+          )}
         </Stack>
       )}
     </QueryBoundary>

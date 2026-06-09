@@ -42,6 +42,40 @@ class NextHarvest {
       );
 }
 
+/// A recent journal note surfaced on the home screen.
+class OverviewActivityEntry {
+  final int id;
+  final String entryType;
+  final String entryTypeDisplay;
+  final String note;
+  final int? animal;
+  final String? animalName;
+  final DateTime occurredOn;
+  final String? createdByName;
+
+  OverviewActivityEntry({
+    required this.id,
+    required this.entryType,
+    required this.entryTypeDisplay,
+    required this.note,
+    required this.animal,
+    required this.animalName,
+    required this.occurredOn,
+    required this.createdByName,
+  });
+
+  factory OverviewActivityEntry.fromJson(Map<String, dynamic> json) => OverviewActivityEntry(
+        id: json['id'] as int,
+        entryType: json['entry_type'] as String? ?? 'general',
+        entryTypeDisplay: json['entry_type_display'] as String? ?? '',
+        note: json['note'] as String? ?? '',
+        animal: json['animal'] as int?,
+        animalName: json['animal_name'] as String?,
+        occurredOn: asDate(json['occurred_on']),
+        createdByName: json['created_by_name'] as String?,
+      );
+}
+
 class Overview {
   final int tasksOverdue;
   final int tasksDueToday;
@@ -54,6 +88,7 @@ class Overview {
   final NextHarvest? nextHarvest;
   final int eggsToday;
   final int eggsThisWeek;
+  final List<OverviewActivityEntry> activity;
 
   Overview({
     required this.tasksOverdue,
@@ -67,6 +102,7 @@ class Overview {
     required this.nextHarvest,
     required this.eggsToday,
     required this.eggsThisWeek,
+    required this.activity,
   });
 
   factory Overview.fromJson(Map<String, dynamic> json) {
@@ -91,6 +127,9 @@ class Overview {
       nextHarvest: nh == null ? null : NextHarvest.fromJson(nh),
       eggsToday: eggs['today'] as int? ?? 0,
       eggsThisWeek: eggs['this_week'] as int? ?? 0,
+      activity: (json['activity'] as List<dynamic>? ?? [])
+          .map((e) => OverviewActivityEntry.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

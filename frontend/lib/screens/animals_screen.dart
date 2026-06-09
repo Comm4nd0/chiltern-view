@@ -2,57 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import '../models/animal.dart';
+import '../util/animal_display.dart';
+import '../widgets/animal_sheet.dart';
 import '../widgets/async_view.dart';
-
-const List<List<String>> _speciesChoices = [
-  ['chicken', 'Chicken'],
-  ['duck', 'Duck'],
-  ['goose', 'Goose'],
-  ['turkey', 'Turkey'],
-  ['goat', 'Goat'],
-  ['sheep', 'Sheep'],
-  ['pig', 'Pig'],
-  ['cow', 'Cow'],
-  ['horse', 'Horse'],
-  ['rabbit', 'Rabbit'],
-  ['tortoise', 'Tortoise'],
-  ['dog', 'Dog'],
-  ['cat', 'Cat'],
-  ['bees', 'Bee colony'],
-  ['other', 'Other'],
-];
-
-const Map<String, String> _speciesEmoji = {
-  'chicken': '🐔',
-  'duck': '🦆',
-  'goose': '🦢',
-  'turkey': '🦃',
-  'goat': '🐐',
-  'sheep': '🐑',
-  'pig': '🐷',
-  'cow': '🐄',
-  'horse': '🐴',
-  'rabbit': '🐰',
-  'tortoise': '🐢',
-  'dog': '🐕',
-  'cat': '🐈',
-  'bees': '🐝',
-  'other': '🐾',
-};
-
-/// Age from date of birth, e.g. "2 yr 3 mo" / "5 mo". Null if unknown.
-String? _ageLabel(DateTime? dob) {
-  if (dob == null) return null;
-  final now = DateTime.now();
-  int months = (now.year - dob.year) * 12 + (now.month - dob.month);
-  if (now.day < dob.day) months -= 1;
-  if (months < 0) return null;
-  final years = months ~/ 12;
-  final rem = months % 12;
-  if (years == 0) return '$months mo';
-  if (rem == 0) return '$years yr';
-  return '$years yr $rem mo';
-}
+import 'animal_detail_screen.dart';
 
 class _SpeciesGroup {
   final String code;
@@ -95,18 +48,16 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _AnimalSheet(api: _api),
+      builder: (_) => AnimalSheet(api: _api),
     );
     if (created == true) _refresh();
   }
 
-  Future<void> _editAnimal(Animal animal) async {
-    final changed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _AnimalSheet(api: _api, animal: animal),
-    );
-    if (changed == true) _refresh();
+  Future<void> _open(Animal animal) async {
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => AnimalDetailScreen(animalId: animal.id),
+    ));
+    _refresh(); // the animal may have been edited on the detail screen
   }
 
   Future<void> _confirmDelete(Animal animal) async {
@@ -190,7 +141,7 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(_speciesEmoji[g.code] ?? '🐾', style: const TextStyle(fontSize: 40)),
+                    Text(speciesEmoji[g.code] ?? '🐾', style: const TextStyle(fontSize: 40)),
                     const SizedBox(height: 8),
                     Text(g.label,
                         style: Theme.of(context).textTheme.titleMedium,
@@ -233,7 +184,7 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
           for (final a in group.animals)
             _AnimalRow(
               animal: a,
-              onEdit: () => _editAnimal(a),
+              onOpen: () => _open(a),
               onDelete: () => _confirmDelete(a),
             ),
       ],
@@ -243,14 +194,14 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
 
 class _AnimalRow extends StatelessWidget {
   final Animal animal;
-  final VoidCallback onEdit;
+  final VoidCallback onOpen;
   final VoidCallback onDelete;
-  const _AnimalRow({required this.animal, required this.onEdit, required this.onDelete});
+  const _AnimalRow({required this.animal, required this.onOpen, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final facts = [_ageLabel(animal.dateOfBirth), animal.breed]
+    final facts = [ageLabel(animal.dateOfBirth), animal.breed]
         .where((s) => s != null && s.isNotEmpty)
         .join(' · ');
     return Card(
@@ -261,7 +212,7 @@ class _AnimalRow extends StatelessWidget {
           children: [
             Expanded(
               child: InkWell(
-                onTap: onEdit,
+                onTap: onOpen,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -282,141 +233,6 @@ class _AnimalRow extends StatelessWidget {
               icon: const Icon(Icons.delete_outline),
               tooltip: 'Remove ${animal.name}',
               onPressed: onDelete,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AnimalSheet extends StatefulWidget {
-  final ApiClient api;
-  final Animal? animal;
-  const _AnimalSheet({required this.api, this.animal});
-
-  @override
-  State<_AnimalSheet> createState() => _AnimalSheetState();
-}
-
-class _AnimalSheetState extends State<_AnimalSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _breed = TextEditingController();
-  String _species = 'chicken';
-  bool _active = true;
-  bool _saving = false;
-
-  bool get _editing => widget.animal != null;
-
-  @override
-  void initState() {
-    super.initState();
-    final a = widget.animal;
-    if (a != null) {
-      _name.text = a.name;
-      _breed.text = a.breed;
-      _species = a.species;
-      _active = a.active;
-    }
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _breed.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-    try {
-      if (_editing) {
-        await widget.api.updateAnimal(
-          widget.animal!.id,
-          name: _name.text.trim(),
-          species: _species,
-          breed: _breed.text.trim(),
-          active: _active,
-        );
-      } else {
-        await widget.api.createAnimal(
-          name: _name.text.trim(),
-          species: _species,
-          breed: _breed.text.trim(),
-        );
-      }
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      if (mounted) {
-        setState(() => _saving = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(_editing ? 'Edit animal' : 'New animal',
-                style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _species,
-              decoration: const InputDecoration(labelText: 'Species', border: OutlineInputBorder()),
-              items: [
-                for (final s in _speciesChoices)
-                  DropdownMenuItem<String>(value: s[0], child: Text(s[1])),
-              ],
-              onChanged: (v) => setState(() => _species = v ?? 'chicken'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _breed,
-              decoration: const InputDecoration(
-                labelText: 'Breed (optional)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            if (_editing)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_active ? 'Active' : 'Retired'),
-                value: _active,
-                onChanged: (v) => setState(() => _active = v),
-              ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : Text(_editing ? 'Save' : 'Add'),
-                ),
-              ],
             ),
           ],
         ),

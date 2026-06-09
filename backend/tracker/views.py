@@ -29,6 +29,14 @@ def health(request):
     return Response({"status": "ok", "time": timezone.now().isoformat()})
 
 
+def person_for(user):
+    """The Person linked to a logged-in user, or None (link is optional)."""
+    try:
+        return user.person
+    except (Person.DoesNotExist, AttributeError):
+        return None
+
+
 @api_view(["GET"])
 def overview(request):
     """At-a-glance summary of the whole holding for the home dashboard.
@@ -75,6 +83,26 @@ def overview(request):
     eggs_today = EggRecord.objects.filter(date=today).aggregate(n=Sum("count"))["n"] or 0
     eggs_week = EggRecord.objects.filter(date__gte=week_start).aggregate(n=Sum("count"))["n"] or 0
 
+    # --- Recent activity: the latest human notes from the holding journal.
+    # Task completions are excluded — they're already visible as task state.
+    recent_notes = (
+        LogEntry.objects.select_related("animal", "created_by")
+        .exclude(entry_type=LogEntry.EntryType.TASK_COMPLETED)[:5]
+    )
+    activity = [
+        {
+            "id": entry.id,
+            "entry_type": entry.entry_type,
+            "entry_type_display": entry.get_entry_type_display(),
+            "note": entry.note,
+            "animal": entry.animal_id,
+            "animal_name": entry.animal.name if entry.animal else None,
+            "occurred_on": entry.occurred_on,
+            "created_by_name": entry.created_by.name if entry.created_by else None,
+        }
+        for entry in recent_notes
+    ]
+
     return Response(
         {
             "tasks": {
@@ -87,6 +115,7 @@ def overview(request):
             "animals": {"total": animals.count(), "by_species": by_species},
             "crops": {"growing": len(growing), "next_harvest": next_harvest},
             "eggs": {"today": eggs_today, "this_week": eggs_week},
+            "activity": activity,
         }
     )
 
@@ -146,11 +175,24 @@ class CareTaskViewSet(viewsets.ModelViewSet):
 
 
 class LogEntryViewSet(viewsets.ModelViewSet):
-    queryset = LogEntry.objects.select_related("animal", "care_task").all()
+    queryset = LogEntry.objects.select_related("animal", "care_task", "created_by").all()
     serializer_class = LogEntrySerializer
     filterset_fields = ["entry_type", "animal", "care_task", "occurred_on"]
     search_fields = ["note"]
     ordering_fields = ["occurred_on", "created_at"]
+
+    def get_queryset(self):
+        """Support ?types=health,feeding — a CSV multi-type filter the single
+        entry_type param can't express (used to hide routine task completions)."""
+        queryset = super().get_queryset()
+        types = self.request.query_params.get("types")
+        if types:
+            wanted = [t.strip() for t in types.split(",") if t.strip()]
+            queryset = queryset.filter(entry_type__in=wanted)
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=person_for(self.request.user))
 
 
 class EggRecordViewSet(viewsets.ModelViewSet):

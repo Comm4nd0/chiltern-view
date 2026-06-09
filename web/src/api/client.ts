@@ -6,7 +6,9 @@ import type {
   CropCatalogEntry,
   EggRecord,
   EggSummary,
+  LogEntry,
   Overview,
+  Paged,
   Person,
 } from './types'
 import { clearAuth, getToken } from './auth'
@@ -72,6 +74,13 @@ export interface CreateCropInput {
 
 export type UpdateCropInput = Partial<CreateCropInput> & { harvested_on?: string | null }
 
+export interface LogEntryInput {
+  entry_type: string
+  note: string
+  animal?: number | null
+  occurred_on?: string
+}
+
 export interface HarvestCropInput {
   date?: string
   yield_kg?: string
@@ -129,6 +138,24 @@ export const api = {
   // Marking harvested also retires the crop's auto watering/harvest reminders.
   harvestCrop: (id: number, input: HarvestCropInput) =>
     request<Crop>(`/crops/${id}/harvest/`, { method: 'POST', body: JSON.stringify(input) }),
+
+  // Journal: keep DRF's pagination envelope so timelines can load further pages.
+  logEntries: async (params: { animal?: number; types?: string; page?: number } = {}) => {
+    const q = new URLSearchParams()
+    if (params.animal != null) q.set('animal', String(params.animal))
+    if (params.types) q.set('types', params.types)
+    if (params.page && params.page > 1) q.set('page', String(params.page))
+    const qs = q.toString()
+    const data = await request<unknown>(`/log-entries/${qs ? `?${qs}` : ''}`)
+    if (Array.isArray(data)) return { results: data, next: null } as Paged<LogEntry>
+    const env = data as { results: LogEntry[]; next: string | null }
+    return { results: env.results, next: env.next } as Paged<LogEntry>
+  },
+  createLogEntry: (input: LogEntryInput) =>
+    request<LogEntry>('/log-entries/', { method: 'POST', body: JSON.stringify(input) }),
+  updateLogEntry: (id: number, patch: Partial<LogEntryInput>) =>
+    request<LogEntry>(`/log-entries/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteLogEntry: (id: number) => request<void>(`/log-entries/${id}/`, { method: 'DELETE' }),
 
   eggSummary: () => request<EggSummary>('/egg-records/summary/'),
   recentEggs: () => request<unknown>('/egg-records/?ordering=-date').then(decodeList<EggRecord>),

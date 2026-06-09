@@ -1,0 +1,473 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../api/api_client.dart';
+import '../models/animal.dart';
+import '../models/log_entry.dart';
+import '../util/animal_display.dart';
+import '../widgets/animal_sheet.dart';
+
+/// The note types a person writes by hand (task_completed entries are system-made).
+const List<List<String>> noteTypes = [
+  ['general', 'General'],
+  ['health', 'Health'],
+  ['feeding', 'Feeding'],
+  ['breeding', 'Breeding'],
+];
+
+const Map<String, Color> typeColors = {
+  'general': Color(0xFF00796B),
+  'health': Color(0xFFFF3B30),
+  'feeding': Color(0xFFFF9500),
+  'breeding': Color(0xFFAF52DE),
+  'task_completed': Color(0xFF8E8E93),
+};
+
+class _Filter {
+  final String key;
+  final String label;
+  final String? types;
+  const _Filter(this.key, this.label, this.types);
+}
+
+/// Chip filters over the journal. "Notes" hides routine task completions.
+const List<_Filter> _filters = [
+  _Filter('notes', 'Notes', 'general,health,feeding,breeding'),
+  _Filter('health', 'Health', 'health'),
+  _Filter('feeding', 'Feeding', 'feeding'),
+  _Filter('breeding', 'Breeding', 'breeding'),
+  _Filter('all', 'Everything', null),
+];
+
+/// One animal: who they are plus their journal (health notes, treatments, …).
+class AnimalDetailScreen extends StatefulWidget {
+  final int animalId;
+  const AnimalDetailScreen({super.key, required this.animalId});
+
+  @override
+  State<AnimalDetailScreen> createState() => _AnimalDetailScreenState();
+}
+
+class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
+  final ApiClient _api = ApiClient();
+  Animal? _animal;
+  String? _animalError;
+  final List<LogEntry> _entries = [];
+  bool _logLoading = true;
+  String? _logError;
+  bool _hasMore = false;
+  int _page = 1;
+  String _filter = 'notes';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnimal();
+    _loadLog(reset: true);
+  }
+
+  Future<void> _loadAnimal() async {
+    try {
+      final animal = await _api.animal(widget.animalId);
+      if (mounted) setState(() => _animal = animal);
+    } catch (e) {
+      if (mounted) setState(() => _animalError = '$e');
+    }
+  }
+
+  String? get _types => _filters.firstWhere((f) => f.key == _filter).types;
+
+  Future<void> _loadLog({required bool reset}) async {
+    if (reset) {
+      setState(() {
+        _logLoading = true;
+        _logError = null;
+        _entries.clear();
+        _page = 1;
+        _hasMore = false;
+      });
+    }
+    try {
+      final page = await _api.logEntries(animal: widget.animalId, types: _types, page: _page);
+      if (!mounted) return;
+      setState(() {
+        _entries.addAll(page.entries);
+        _hasMore = page.hasMore;
+        _logLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _logError = '$e';
+        _logLoading = false;
+      });
+    }
+  }
+
+  void _loadMore() {
+    _page += 1;
+    _loadLog(reset: false);
+  }
+
+  Future<void> _editAnimal() async {
+    final animal = _animal;
+    if (animal == null) return;
+    final changed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => AnimalSheet(api: _api, animal: animal),
+    );
+    if (changed == true) _loadAnimal();
+  }
+
+  Future<void> _addOrEditNote([LogEntry? entry]) async {
+    final changed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _LogEntrySheet(api: _api, animalId: widget.animalId, entry: entry),
+    );
+    if (changed == true) _loadLog(reset: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_animal?.name ?? 'Animal')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _addOrEditNote(),
+        icon: const Icon(Icons.add),
+        label: const Text('Note'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _loadAnimal();
+          await _loadLog(reset: true);
+        },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          children: [
+            _header(context),
+            _journal(context),
+            const SizedBox(height: 80), // room for the FAB
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _header(BuildContext context) {
+    final theme = Theme.of(context);
+    final animal = _animal;
+    if (animal == null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: _animalError != null
+              ? Text('Could not load: $_animalError')
+              : const Center(
+                  child: SizedBox(
+                      width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+        ),
+      );
+    }
+    final facts = [
+      animal.speciesDisplay,
+      animal.breed,
+      ageLabel(animal.dateOfBirth),
+    ].where((s) => s != null && s.isNotEmpty).join(' · ');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Text(speciesEmoji[animal.species] ?? '🐾', style: const TextStyle(fontSize: 36)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(animal.name, style: theme.textTheme.titleLarge),
+                  Text(facts, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+            Chip(
+              label: Text(animal.active ? 'Active' : 'Retired'),
+              visualDensity: VisualDensity.compact,
+              backgroundColor: animal.active
+                  ? theme.colorScheme.secondaryContainer
+                  : theme.colorScheme.surfaceContainerHighest,
+            ),
+            TextButton(onPressed: _editAnimal, child: const Text('Edit')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _journal(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Journal', style: theme.textTheme.titleLarge),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final f in _filters) ...[
+                    FilterChip(
+                      label: Text(f.label),
+                      selected: _filter == f.key,
+                      onSelected: (_) {
+                        setState(() => _filter = f.key);
+                        _loadLog(reset: true);
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_logLoading)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                    child: SizedBox(
+                        width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+              )
+            else if (_logError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('Could not load the journal: $_logError')),
+                    TextButton(onPressed: () => _loadLog(reset: true), child: const Text('Retry')),
+                  ],
+                ),
+              )
+            else if (_entries.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(
+                  child: Text('Nothing in the journal yet — add the first note.',
+                      style: theme.textTheme.bodyMedium),
+                ),
+              )
+            else ...[
+              for (final entry in _entries) _entryRow(context, entry),
+              if (_hasMore)
+                Center(
+                  child: TextButton(onPressed: _loadMore, child: const Text('Load more')),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _entryRow(BuildContext context, LogEntry entry) {
+    final theme = Theme.of(context);
+    final color = typeColors[entry.entryType] ?? const Color(0xFF8E8E93);
+    final meta = [
+      DateFormat('d MMM y').format(entry.occurredOn),
+      if (entry.createdByName != null) entry.createdByName!,
+    ].join(' · ');
+    return InkWell(
+      onTap: entry.isSystem ? null : () => _addOrEditNote(entry),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                entry.entryTypeDisplay,
+                style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(entry.note, style: theme.textTheme.bodyMedium),
+                  Text(meta, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Add a journal note, or edit/delete an existing one when [entry] is given.
+class _LogEntrySheet extends StatefulWidget {
+  final ApiClient api;
+  final int animalId;
+  final LogEntry? entry;
+  const _LogEntrySheet({required this.api, required this.animalId, this.entry});
+
+  @override
+  State<_LogEntrySheet> createState() => _LogEntrySheetState();
+}
+
+class _LogEntrySheetState extends State<_LogEntrySheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _note = TextEditingController();
+  String _type = 'general';
+  DateTime _occurredOn = DateTime.now();
+  bool _saving = false;
+
+  bool get _editing => widget.entry != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final entry = widget.entry;
+    if (entry != null) {
+      _note.text = entry.note;
+      _type = entry.entryType;
+      _occurredOn = entry.occurredOn;
+    }
+  }
+
+  @override
+  void dispose() {
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      if (_editing) {
+        await widget.api.updateLogEntry(
+          widget.entry!.id,
+          entryType: _type,
+          note: _note.text.trim(),
+          occurredOn: _occurredOn,
+        );
+      } else {
+        await widget.api.createLogEntry(
+          entryType: _type,
+          note: _note.text.trim(),
+          animal: widget.animalId,
+          occurredOn: _occurredOn,
+        );
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
+  Future<void> _delete() async {
+    setState(() => _saving = true);
+    try {
+      await widget.api.deleteLogEntry(widget.entry!.id);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_editing ? 'Edit note' : 'New note',
+                style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _type,
+              decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
+              items: [
+                for (final t in noteTypes) DropdownMenuItem(value: t[0], child: Text(t[1])),
+              ],
+              onChanged: (v) => setState(() => _type = v ?? 'general'),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _note,
+              autofocus: !_editing,
+              maxLines: 3,
+              minLines: 2,
+              decoration: const InputDecoration(labelText: 'Note', border: OutlineInputBorder()),
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'Write a note' : null,
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _occurredOn,
+                  firstDate: DateTime(DateTime.now().year - 5),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) setState(() => _occurredOn = picked);
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'When', border: OutlineInputBorder()),
+                child: Text(DateFormat('d MMM y').format(_occurredOn)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                if (_editing)
+                  TextButton(
+                    onPressed: _saving ? null : _delete,
+                    style: TextButton.styleFrom(
+                        foregroundColor: Theme.of(context).colorScheme.error),
+                    child: const Text('Delete'),
+                  ),
+                const Spacer(),
+                TextButton(
+                  onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(_editing ? 'Save' : 'Add'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

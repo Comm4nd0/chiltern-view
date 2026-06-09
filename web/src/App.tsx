@@ -15,6 +15,7 @@ import OverviewPage from './pages/OverviewPage'
 import DashboardPage from './pages/DashboardPage'
 import CropsPage from './pages/CropsPage'
 import AnimalsPage from './pages/AnimalsPage'
+import AnimalDetailPage from './pages/AnimalDetailPage'
 import EggLogPage from './pages/EggLogPage'
 import SettingsPage from './pages/SettingsPage'
 import LoginPage from './pages/LoginPage'
@@ -40,8 +41,12 @@ export default function App() {
   const { token } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
-  const current = tabs.findIndex((t) => t.path === location.pathname)
-  const title = titles[location.pathname] ?? 'Chiltern View'
+  // Nested pages (e.g. /animals/3) keep their section's tab highlighted.
+  const current = tabs.findIndex((t) =>
+    t.path === '/' ? location.pathname === '/' : location.pathname.startsWith(t.path),
+  )
+  const title =
+    titles[location.pathname] ?? (location.pathname.startsWith('/animals/') ? 'Animal' : 'Chiltern View')
 
   // Not signed in → the login screen replaces the whole shell.
   if (!token) return <LoginPage />
@@ -81,6 +86,7 @@ export default function App() {
           <Route path="/todo" element={<DashboardPage />} />
           <Route path="/crops" element={<CropsPage />} />
           <Route path="/animals" element={<AnimalsPage />} />
+          <Route path="/animals/:id" element={<AnimalDetailPage />} />
           <Route path="/eggs" element={<EggLogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

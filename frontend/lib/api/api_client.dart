@@ -10,6 +10,7 @@ import '../models/crop.dart';
 import '../models/crop_catalog.dart';
 import '../models/egg_record.dart';
 import '../models/egg_summary.dart';
+import '../models/log_entry.dart';
 import '../models/overview.dart';
 import '../models/person.dart';
 
@@ -259,6 +260,86 @@ class ApiClient {
 
   Future<void> deleteAnimal(int id) async {
     final res = await _client.delete(_uri('/animals/$id/'), headers: _headers());
+    _check(res);
+  }
+
+  Future<Animal> animal(int id) async {
+    final res = await _client.get(_uri('/animals/$id/'), headers: _headers());
+    _check(res);
+    return Animal.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // --- Journal --------------------------------------------------------------
+  /// One page of the journal, newest first (DRF paginates at 50). [types] is a
+  /// CSV of entry types, e.g. 'health,feeding' — used to hide task completions.
+  Future<PagedLogEntries> logEntries({int? animal, String? types, int page = 1}) async {
+    final res = await _client.get(
+      _uri('/log-entries/', {
+        if (animal != null) 'animal': animal,
+        if (types != null && types.isNotEmpty) 'types': types,
+        if (page > 1) 'page': page,
+      }),
+      headers: _headers(),
+    );
+    _check(res);
+    final dynamic body = jsonDecode(res.body);
+    if (body is Map<String, dynamic>) {
+      return PagedLogEntries(
+        entries: (body['results'] as List<dynamic>)
+            .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        hasMore: body['next'] != null,
+      );
+    }
+    return PagedLogEntries(
+      entries: (body as List<dynamic>)
+          .map((e) => LogEntry.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      hasMore: false,
+    );
+  }
+
+  Future<LogEntry> createLogEntry({
+    required String entryType,
+    required String note,
+    int? animal,
+    DateTime? occurredOn,
+  }) async {
+    final res = await _client.post(
+      _uri('/log-entries/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'entry_type': entryType,
+        'note': note,
+        if (animal != null) 'animal': animal,
+        if (occurredOn != null) 'occurred_on': _ymd(occurredOn),
+      }),
+    );
+    _check(res);
+    return LogEntry.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<LogEntry> updateLogEntry(
+    int id, {
+    required String entryType,
+    required String note,
+    DateTime? occurredOn,
+  }) async {
+    final res = await _client.patch(
+      _uri('/log-entries/$id/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'entry_type': entryType,
+        'note': note,
+        if (occurredOn != null) 'occurred_on': _ymd(occurredOn),
+      }),
+    );
+    _check(res);
+    return LogEntry.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteLogEntry(int id) async {
+    final res = await _client.delete(_uri('/log-entries/$id/'), headers: _headers());
     _check(res);
   }
 

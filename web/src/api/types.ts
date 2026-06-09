@@ -82,12 +82,46 @@ export interface EggSummary {
   total: number
 }
 
+export type LogEntryType = 'general' | 'health' | 'feeding' | 'breeding' | 'task_completed'
+
+export interface LogEntry {
+  id: number
+  entry_type: LogEntryType
+  entry_type_display: string
+  note: string
+  animal: number | null
+  animal_name: string | null
+  care_task: number | null
+  care_task_name: string | null
+  created_by: number | null
+  created_by_name: string | null
+  occurred_on: string
+  created_at: string
+}
+
+/** A page of a DRF-paginated list, keeping `next` so timelines can load more. */
+export interface Paged<T> {
+  results: T[]
+  next: string | null
+}
+
 export interface OverviewTask {
   id: number
   name: string
   assignee_name: string | null
   days_overdue: number
   status: 'overdue' | 'due_today' | 'upcoming'
+}
+
+export interface OverviewActivityEntry {
+  id: number
+  entry_type: LogEntryType
+  entry_type_display: string
+  note: string
+  animal: number | null
+  animal_name: string | null
+  occurred_on: string
+  created_by_name: string | null
 }
 
 export interface Overview {
@@ -101,4 +135,5 @@ export interface Overview {
   animals: { total: number; by_species: Record<string, number> }
   crops: { growing: number; next_harvest: { label: string; date: string } | null }
   eggs: { today: number; this_week: number }
+  activity: OverviewActivityEntry[]
 }

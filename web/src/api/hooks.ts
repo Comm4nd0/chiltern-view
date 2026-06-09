@@ -1,6 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { HarvestCropInput, UpdateCropInput, UpdateTaskInput } from './client'
+import type { HarvestCropInput, LogEntryInput, UpdateCropInput, UpdateTaskInput } from './client'
 
 export const keys = {
   dashboard: (assignee?: string) => ['dashboard', assignee ?? 'all'] as const,
@@ -184,6 +184,41 @@ export function useHarvestCrop() {
   return useCropMutation(({ id, input }: { id: number; input: HarvestCropInput }) =>
     api.harvestCrop(id, input),
   )
+}
+
+/** An animal's journal, newest first, loading further pages on demand. */
+export function useAnimalLog(animalId: number, types?: string) {
+  return useInfiniteQuery({
+    queryKey: ['log', animalId, types ?? 'all'],
+    queryFn: ({ pageParam }) => api.logEntries({ animal: animalId, types, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last, pages) => (last.next ? pages.length + 1 : undefined),
+  })
+}
+
+function useLogMutation<TArgs>(mutationFn: (args: TArgs) => Promise<unknown>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['log'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
+export function useCreateLogEntry() {
+  return useLogMutation((input: LogEntryInput) => api.createLogEntry(input))
+}
+
+export function useUpdateLogEntry() {
+  return useLogMutation(({ id, patch }: { id: number; patch: Partial<LogEntryInput> }) =>
+    api.updateLogEntry(id, patch),
+  )
+}
+
+export function useDeleteLogEntry() {
+  return useLogMutation((id: number) => api.deleteLogEntry(id))
 }
 
 export function useIncrementEggs() {
