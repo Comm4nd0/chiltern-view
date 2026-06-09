@@ -1,9 +1,9 @@
 import { createTheme } from '@mui/material/styles'
 
-// Smallholding green, matching the Flutter app.
+// Teal (favourite colour), matching the Flutter app.
 export const theme = createTheme({
   palette: {
-    primary: { main: '#4F772D' },
+    primary: { main: '#00796B' },
     background: { default: '#f6f7f2' },
   },
   shape: { borderRadius: 12 },
@@ -17,6 +17,6 @@ export function statusColor(status: string): string {
     case 'due_today':
       return '#E67E22'
     default:
-      return '#4F772D'
+      return '#00796B'
   }
 }

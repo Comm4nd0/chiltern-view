@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color _seed = Color(0xFF4F772D); // smallholding green
+  static const Color _seed = Color(0xFF00796B); // teal (favourite colour)
 
   static ThemeData light() {
     final scheme = ColorScheme.fromSeed(seedColor: _seed);
@@ -26,7 +26,7 @@ class AppTheme {
       case 'due_today':
         return const Color(0xFFE67E22); // amber
       default:
-        return const Color(0xFF4F772D); // green
+        return const Color(0xFF00796B); // teal
     }
   }
 }
