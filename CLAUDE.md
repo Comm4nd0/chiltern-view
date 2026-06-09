@@ -13,11 +13,26 @@ A single place to manage the home. Priorities, in order:
    task list; an overview.
 2. **A strong to-do list**: create tasks, mark them complete, and get **reminders
    when tasks are due or overdue**.
-3. **Manage the animals and the crops**, and stay **easily extensible** to other
-   things we want to track later.
+3. **Manage the animals and the crops** with **built-in knowledge**, and stay
+   **easily extensible** to other things we want to track later.
 
 Built for two people (Marco + Claire); both must always get the same experience
 (see the parity rule below).
+
+### Structure & built-in knowledge (the current direction)
+Navigation: **Home · To do · Crops · Animals** (no separate Potatoes/Eggs tabs).
+Potatoes are a crop; eggs are tracked under the chickens (an animal).
+- **Crop catalog** (code-defined): each crop has its own growth **stages + timing**
+  — potatoes keep their detailed stages; carrots, cucumbers, etc. get theirs.
+  Adding a crop picks a type from a dropdown; an unknown crop gets added to the
+  catalog in code so the app "knows" it.
+- **Animal-type catalog** (code-defined): chicken, goat, horse, tortoise, dog, …
+  each with its own default care reminders.
+- **Auto reminders**: adding a crop creates reminders at each growth stage; adding
+  an animal creates that type's care reminders. Implement as auto-generated
+  `CareTask`s so the existing to-do + reminder system surfaces them.
+- **Weather-aware watering**: use local weather (the holding's location) to decide
+  when to remind about watering crops.
 
 ## ⚠️ Web and mobile must stay in lockstep (non-negotiable)
 

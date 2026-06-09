@@ -4,7 +4,6 @@ import 'api/api_client.dart';
 import 'config.dart';
 import 'screens/animals_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/egg_log_screen.dart';
 import 'screens/overview_screen.dart';
 import 'screens/potato_timeline_screen.dart';
 import 'screens/settings_screen.dart';
@@ -46,8 +45,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   static const List<String> _titles = [
     'Chiltern View',
     'What needs doing',
-    'Potato timeline',
-    'Egg log',
+    'Crops',
     'Animals',
   ];
 
@@ -55,7 +53,6 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     OverviewScreen(onOpenTab: (i) => setState(() => _index = i)),
     const DashboardScreen(),
     const PotatoTimelineScreen(),
-    const EggLogScreen(),
     const AnimalsScreen(),
   ];
 
@@ -121,12 +118,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           NavigationDestination(
             icon: Icon(Icons.grass_outlined),
             selectedIcon: Icon(Icons.grass),
-            label: 'Potatoes',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.egg_outlined),
-            selectedIcon: Icon(Icons.egg),
-            label: 'Eggs',
+            label: 'Crops',
           ),
           NavigationDestination(
             icon: Icon(Icons.pets_outlined),

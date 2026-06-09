@@ -172,7 +172,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     } else {
       subtitle = 'growing';
     }
-    return _section(context, Icons.grass, 'Potatoes', '${o.potatoesGrowing}', subtitle,
+    return _section(context, Icons.grass, 'Crops', '${o.potatoesGrowing}', subtitle,
         () => widget.onOpenTab(2));
   }
 
@@ -185,7 +185,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final primary = Theme.of(context).colorScheme.primary;
     return Card(
       child: InkWell(
-        onTap: () => widget.onOpenTab(4),
+        onTap: () => widget.onOpenTab(3),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(

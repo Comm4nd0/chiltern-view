@@ -19,6 +19,10 @@ class Animal(models.Model):
         COW = "cow", "Cow"
         RABBIT = "rabbit", "Rabbit"
         BEES = "bees", "Bee colony"
+        HORSE = "horse", "Horse"
+        TORTOISE = "tortoise", "Tortoise"
+        DOG = "dog", "Dog"
+        CAT = "cat", "Cat"
         OTHER = "other", "Other"
 
     name = models.CharField(max_length=100)

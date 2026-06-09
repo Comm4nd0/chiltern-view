@@ -131,3 +131,9 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
+
+# --- Weather (Open-Meteo) for crop watering reminders -----------------------
+# Baked in to the holding's location: Medmenham, Buckinghamshire.
+WEATHER_LATITUDE = float(os.environ.get("WEATHER_LATITUDE", "51.557"))
+WEATHER_LONGITUDE = float(os.environ.get("WEATHER_LONGITUDE", "-0.812"))
+WEATHER_LOCATION_NAME = os.environ.get("WEATHER_LOCATION_NAME", "Medmenham, Buckinghamshire")

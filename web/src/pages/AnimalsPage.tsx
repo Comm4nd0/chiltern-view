@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -15,12 +16,15 @@ import {
   MenuItem,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import { useAnimals, useCreateAnimal, useDeleteAnimal } from '../api/hooks'
 import QueryBoundary from '../components/QueryBoundary'
+import EggLogPage from './EggLogPage'
 
 const SPECIES: [string, string][] = [
   ['chicken', 'Chicken'],
@@ -31,7 +35,11 @@ const SPECIES: [string, string][] = [
   ['sheep', 'Sheep'],
   ['pig', 'Pig'],
   ['cow', 'Cow'],
+  ['horse', 'Horse'],
   ['rabbit', 'Rabbit'],
+  ['tortoise', 'Tortoise'],
+  ['dog', 'Dog'],
+  ['cat', 'Cat'],
   ['bees', 'Bee colony'],
   ['other', 'Other'],
 ]
@@ -98,7 +106,7 @@ function AddAnimalDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-export default function AnimalsPage() {
+function AnimalsList() {
   const animals = useAnimals()
   const del = useDeleteAnimal()
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -155,6 +163,30 @@ export default function AnimalsPage() {
         <AddIcon />
       </Fab>
       {dialogOpen && <AddAnimalDialog onClose={() => setDialogOpen(false)} />}
+    </Box>
+  )
+}
+
+export default function AnimalsPage() {
+  const [params, setParams] = useSearchParams()
+  const view = params.get('view') === 'eggs' ? 'eggs' : 'animals'
+
+  return (
+    <Box>
+      <ToggleButtonGroup
+        value={view}
+        exclusive
+        fullWidth
+        size="small"
+        sx={{ mb: 2 }}
+        onChange={(_, v) => {
+          if (v) setParams(v === 'eggs' ? { view: 'eggs' } : {})
+        }}
+      >
+        <ToggleButton value="animals">Animals</ToggleButton>
+        <ToggleButton value="eggs">Eggs</ToggleButton>
+      </ToggleButtonGroup>
+      {view === 'eggs' ? <EggLogPage /> : <AnimalsList />}
     </Box>
   )
 }

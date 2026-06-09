@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/api_client.dart';
 import '../models/animal.dart';
 import '../widgets/async_view.dart';
+import 'egg_log_screen.dart';
 
 const List<List<String>> _speciesChoices = [
   ['chicken', 'Chicken'],
@@ -13,7 +14,11 @@ const List<List<String>> _speciesChoices = [
   ['sheep', 'Sheep'],
   ['pig', 'Pig'],
   ['cow', 'Cow'],
+  ['horse', 'Horse'],
   ['rabbit', 'Rabbit'],
+  ['tortoise', 'Tortoise'],
+  ['dog', 'Dog'],
+  ['cat', 'Cat'],
   ['bees', 'Bee colony'],
   ['other', 'Other'],
 ];
@@ -28,6 +33,7 @@ class AnimalsScreen extends StatefulWidget {
 class _AnimalsScreenState extends State<AnimalsScreen> {
   final ApiClient _api = ApiClient();
   late Future<List<Animal>> _future;
+  String _view = 'animals';
 
   @override
   void initState() {
@@ -72,49 +78,73 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _add,
-        icon: const Icon(Icons.add),
-        label: const Text('Animal'),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async => _refresh(),
-        child: AsyncView<List<Animal>>(
-          future: _future,
-          onRetry: _refresh,
-          builder: (context, animals) {
-            if (animals.isEmpty) {
-              return ListView(
-                children: const [
-                  SizedBox(height: 120),
-                  Center(child: Text('No animals yet — add your first.')),
+      floatingActionButton: _view == 'animals'
+          ? FloatingActionButton.extended(
+              onPressed: _add,
+              icon: const Icon(Icons.add),
+              label: const Text('Animal'),
+            )
+          : null,
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Center(
+              child: SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'animals', label: Text('Animals')),
+                  ButtonSegment(value: 'eggs', label: Text('Eggs')),
                 ],
-              );
-            }
-            return ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: animals.length,
-              itemBuilder: (context, i) {
-                final animal = animals[i];
-                final sub = [animal.speciesDisplay, animal.breed]
-                    .where((s) => s.isNotEmpty)
-                    .join(' · ');
-                return Card(
-                  child: ListTile(
-                    leading: const Icon(Icons.pets),
-                    title: Text(animal.name),
-                    subtitle: sub.isEmpty ? null : Text(sub),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => _confirmDelete(animal),
-                    ),
-                  ),
-                );
-              },
+                selected: {_view},
+                onSelectionChanged: (s) => setState(() => _view = s.first),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _view == 'animals' ? _animalsBody() : const EggLogScreen(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _animalsBody() {
+    return RefreshIndicator(
+      onRefresh: () async => _refresh(),
+      child: AsyncView<List<Animal>>(
+        future: _future,
+        onRetry: _refresh,
+        builder: (context, animals) {
+          if (animals.isEmpty) {
+            return ListView(
+              children: const [
+                SizedBox(height: 120),
+                Center(child: Text('No animals yet — add your first.')),
+              ],
             );
-          },
-        ),
+          }
+          return ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: animals.length,
+            itemBuilder: (context, i) {
+              final animal = animals[i];
+              final sub =
+                  [animal.speciesDisplay, animal.breed].where((s) => s.isNotEmpty).join(' · ');
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.pets),
+                  title: Text(animal.name),
+                  subtitle: sub.isEmpty ? null : Text(sub),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => _confirmDelete(animal),
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

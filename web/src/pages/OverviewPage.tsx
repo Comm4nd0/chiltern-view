@@ -117,12 +117,12 @@ export default function OverviewPage() {
 
           {/* Potatoes */}
           <Card>
-            <CardActionArea onClick={() => navigate('/potatoes')}>
+            <CardActionArea onClick={() => navigate('/crops')}>
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <GrassIcon color="primary" />
                   <Typography variant="h6" sx={{ flex: 1 }}>
-                    Potatoes
+                    Crops
                   </Typography>
                   <Typography variant="h6">{data.potatoes.growing}</Typography>
                 </Stack>
@@ -141,7 +141,7 @@ export default function OverviewPage() {
 
           {/* Eggs */}
           <Card>
-            <CardActionArea onClick={() => navigate('/eggs')}>
+            <CardActionArea onClick={() => navigate('/animals?view=eggs')}>
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={1}>
                   <EggIcon color="primary" />
