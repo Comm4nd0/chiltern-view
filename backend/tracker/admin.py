@@ -5,8 +5,9 @@ from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
 
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
-    list_display = ["name"]
-    search_fields = ["name"]
+    list_display = ["name", "user"]
+    list_select_related = ["user"]
+    search_fields = ["name", "user__username"]
 
 
 @admin.register(Animal)

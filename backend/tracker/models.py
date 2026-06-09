@@ -93,6 +93,18 @@ class CareTask(models.Model):
         blank=True,
         help_text="When the task was last done. Drives the next due date.",
     )
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="For one-off tasks: the date it's due. Leave blank for recurring tasks.",
+    )
+    auto_key = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Stable key for auto-generated reminders; blank for tasks added by hand.",
+    )
     active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -105,6 +117,11 @@ class CareTask(models.Model):
 
     # -- Scheduling helpers --------------------------------------------------
     @property
+    def is_one_off(self):
+        """A one-off task has a fixed due date and does not recur."""
+        return self.due_date is not None
+
+    @property
     def anchor_date(self):
         """The date the next due date is counted from."""
         if self.last_completed:
@@ -115,6 +132,8 @@ class CareTask(models.Model):
 
     @property
     def next_due(self):
+        if self.due_date:
+            return self.due_date
         return self.anchor_date + timedelta(days=self.recurrence_interval_days)
 
     @property
@@ -132,9 +151,17 @@ class CareTask(models.Model):
         return "upcoming"
 
     def mark_done(self, on=None, note=""):
-        """Record completion: stamp last_completed and write a log entry."""
+        """Record completion: stamp last_completed and write a log entry.
+
+        A recurring task reschedules off the new last_completed; a one-off task is
+        closed out (deactivated) so it drops off the list once done.
+        """
         self.last_completed = on or timezone.localdate()
-        self.save(update_fields=["last_completed", "updated_at"])
+        if self.is_one_off:
+            self.active = False
+            self.save(update_fields=["last_completed", "active", "updated_at"])
+        else:
+            self.save(update_fields=["last_completed", "updated_at"])
         return LogEntry.objects.create(
             care_task=self,
             animal=self.animal,

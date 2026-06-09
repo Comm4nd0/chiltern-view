@@ -35,11 +35,11 @@ class CareTaskSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "description", "animal", "animal_name",
             "assignee", "assignee_name",
-            "recurrence_interval_days", "last_completed", "active",
+            "recurrence_interval_days", "last_completed", "due_date", "auto_key", "active",
             "next_due", "days_overdue", "status",
             "created_at", "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at", "auto_key"]
 
 
 class LogEntrySerializer(serializers.ModelSerializer):

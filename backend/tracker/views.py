@@ -28,7 +28,6 @@ def health(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
 def overview(request):
     """At-a-glance summary of the whole holding for the home dashboard.
 
