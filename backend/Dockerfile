@@ -17,6 +17,9 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
+# Ensure the entrypoint is executable (git on Windows doesn't preserve the +x bit).
+RUN chmod +x entrypoint.sh
+
 # Collect static under production storage so the WhiteNoise manifest exists at runtime.
 RUN DJANGO_DEBUG=False DJANGO_SECRET_KEY=build-only python manage.py collectstatic --noinput
 
