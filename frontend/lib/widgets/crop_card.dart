@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../models/potato_planting.dart';
+import '../models/crop.dart';
 
-/// A planting rendered as a horizontal growth timeline with the current
-/// stage highlighted and a progress bar towards estimated harvest.
-class PotatoTimelineCard extends StatelessWidget {
-  final PotatoPlanting planting;
+/// A crop rendered as a horizontal growth timeline with the current stage
+/// highlighted and a progress bar towards estimated harvest.
+class CropCard extends StatelessWidget {
+  final Crop crop;
 
-  const PotatoTimelineCard({super.key, required this.planting});
+  const CropCard({super.key, required this.crop});
 
   @override
   Widget build(BuildContext context) {
@@ -24,37 +24,34 @@ class PotatoTimelineCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(planting.variety, style: theme.textTheme.titleMedium),
+                  child: Text(crop.cropLabel, style: theme.textTheme.titleMedium),
                 ),
-                Chip(
-                  label: Text(planting.categoryDisplay),
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
+                if (crop.variety.isNotEmpty)
+                  Chip(
+                    label: Text(crop.variety),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
               ],
             ),
-            if (planting.bed.isNotEmpty)
-              Text(planting.bed, style: theme.textTheme.bodySmall),
+            if (crop.bed.isNotEmpty) Text(crop.bed, style: theme.textTheme.bodySmall),
             const SizedBox(height: 12),
-            _StageStrip(planting: planting),
+            _StageStrip(crop: crop),
             const SizedBox(height: 16),
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: planting.progress,
-                minHeight: 8,
-              ),
+              child: LinearProgressIndicator(value: crop.progress, minHeight: 8),
             ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Planted ${dateFmt.format(planting.plantedOn)}',
+                Text('Planted ${dateFmt.format(crop.plantedOn)}',
                     style: theme.textTheme.bodySmall),
                 Text(
-                  planting.isHarvested
+                  crop.isHarvested
                       ? 'Harvested'
-                      : 'Harvest ~ ${dateFmt.format(planting.estimatedHarvest)}',
+                      : 'Harvest ~ ${dateFmt.format(crop.estimatedHarvest)}',
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -67,8 +64,8 @@ class PotatoTimelineCard extends StatelessWidget {
 }
 
 class _StageStrip extends StatelessWidget {
-  final PotatoPlanting planting;
-  const _StageStrip({required this.planting});
+  final Crop crop;
+  const _StageStrip({required this.crop});
 
   @override
   Widget build(BuildContext context) {
@@ -81,28 +78,25 @@ class _StageStrip extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final stage in planting.stages) ...[
+          for (final stage in crop.stages) ...[
             SizedBox(
               width: 88,
               child: Column(
                 children: [
                   Icon(
-                    stage.label == planting.currentStage
+                    stage.label == crop.currentStage
                         ? Icons.radio_button_checked
                         : Icons.circle,
-                    size: stage.label == planting.currentStage ? 18 : 12,
-                    color: _reached(stage.label)
-                        ? primary
-                        : theme.colorScheme.outlineVariant,
+                    size: stage.label == crop.currentStage ? 18 : 12,
+                    color: _reached(stage.label) ? primary : theme.colorScheme.outlineVariant,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     stage.label,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: stage.label == planting.currentStage
-                          ? FontWeight.bold
-                          : FontWeight.normal,
+                      fontWeight:
+                          stage.label == crop.currentStage ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                   Text(dateFmt.format(stage.date), style: theme.textTheme.bodySmall),
@@ -115,12 +109,11 @@ class _StageStrip extends StatelessWidget {
     );
   }
 
-  /// A stage counts as "reached" up to and including the current stage.
   bool _reached(String label) {
-    final labels = planting.stages.map((s) => s.label).toList();
-    final currentIndex = labels.indexOf(planting.currentStage);
+    final labels = crop.stages.map((s) => s.label).toList();
+    final currentIndex = labels.indexOf(crop.currentStage);
     final stageIndex = labels.indexOf(label);
-    if (planting.isHarvested) return true;
+    if (crop.isHarvested) return true;
     return currentIndex >= 0 && stageIndex <= currentIndex;
   }
 }

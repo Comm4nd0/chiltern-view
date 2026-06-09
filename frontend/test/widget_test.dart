@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:chiltern_view/models/care_task.dart';
 import 'package:chiltern_view/models/egg_summary.dart';
 import 'package:chiltern_view/models/overview.dart';
+import 'package:chiltern_view/models/crop.dart';
 import 'package:chiltern_view/models/person.dart';
-import 'package:chiltern_view/models/potato_planting.dart';
 
 void main() {
   group('CareTask', () {
@@ -49,12 +49,12 @@ void main() {
     expect(summary.total, 365);
   });
 
-  test('PotatoPlanting parses stages and progress', () {
-    final planting = PotatoPlanting.fromJson({
+  test('Crop parses stages and progress', () {
+    final crop = Crop.fromJson({
       'id': 1,
-      'variety': 'Charlotte',
-      'category': 'first_early',
-      'category_display': 'First early',
+      'crop': 'carrots',
+      'crop_label': 'Carrots',
+      'variety': 'Nantes',
       'planted_on': '2026-03-01',
       'quantity': null,
       'bed': 'Bed 2',
@@ -63,18 +63,20 @@ void main() {
       'yield_kg': null,
       'notes': '',
       'estimated_harvest': '2026-05-15',
-      'current_stage': 'Flowering',
+      'current_stage': 'Thinning',
       'progress': 0.5,
       'stages': [
-        {'label': 'Planted', 'date': '2026-03-01'},
-        {'label': 'Flowering', 'date': '2026-04-10'},
+        {'label': 'Sown', 'date': '2026-03-01'},
+        {'label': 'Thinning', 'date': '2026-04-10'},
       ],
     });
-    expect(planting.variety, 'Charlotte');
-    expect(planting.stages.length, 2);
-    expect(planting.currentStage, 'Flowering');
-    expect(planting.progress, 0.5);
-    expect(planting.isHarvested, isFalse);
+    expect(crop.crop, 'carrots');
+    expect(crop.cropLabel, 'Carrots');
+    expect(crop.variety, 'Nantes');
+    expect(crop.stages.length, 2);
+    expect(crop.currentStage, 'Thinning');
+    expect(crop.progress, 0.5);
+    expect(crop.isHarvested, isFalse);
   });
 
   test('CareTask parses assignee', () {
@@ -137,9 +139,9 @@ void main() {
         'total': 3,
         'by_species': {'Goat': 1, 'Chicken': 1, 'Pig': 1},
       },
-      'potatoes': {
+      'crops': {
         'growing': 3,
-        'next_harvest': {'variety': 'Charlotte', 'date': '2026-07-14'},
+        'next_harvest': {'label': 'Carrots', 'date': '2026-07-14'},
       },
       'eggs': {'today': 5, 'this_week': 12},
     });
@@ -147,7 +149,8 @@ void main() {
     expect(o.perPerson['Marco'], 3);
     expect(o.topTasks.single.dueLabel, '30d overdue');
     expect(o.animalsTotal, 3);
-    expect(o.nextHarvest?.variety, 'Charlotte');
+    expect(o.cropsGrowing, 3);
+    expect(o.nextHarvest?.label, 'Carrots');
     expect(o.eggsThisWeek, 12);
   });
 }

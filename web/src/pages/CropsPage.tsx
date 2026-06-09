@@ -1,27 +1,27 @@
 import { useState } from 'react'
 import { Box, Fab, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { usePotatoTimeline } from '../api/hooks'
+import { useCrops } from '../api/hooks'
 import QueryBoundary from '../components/QueryBoundary'
-import PotatoTimelineCard from '../components/PotatoTimelineCard'
-import AddPlantingDialog from '../components/AddPlantingDialog'
+import CropCard from '../components/CropCard'
+import AddCropDialog from '../components/AddCropDialog'
 
-export default function PotatoTimelinePage() {
-  const timeline = usePotatoTimeline('growing')
+export default function CropsPage() {
+  const crops = useCrops('growing')
   const [open, setOpen] = useState(false)
 
   return (
     <Box>
-      <QueryBoundary query={timeline}>
-        {(plantings) =>
-          plantings.length === 0 ? (
+      <QueryBoundary query={crops}>
+        {(list) =>
+          list.length === 0 ? (
             <Typography align="center" color="text.secondary" sx={{ mt: 8 }}>
-              No potatoes in the ground yet.
+              Nothing growing yet — add a crop.
             </Typography>
           ) : (
             <Stack spacing={1}>
-              {plantings.map((p) => (
-                <PotatoTimelineCard key={p.id} planting={p} />
+              {list.map((c) => (
+                <CropCard key={c.id} crop={c} />
               ))}
             </Stack>
           )
@@ -32,11 +32,11 @@ export default function PotatoTimelinePage() {
         color="primary"
         sx={{ position: 'fixed', bottom: 24, right: 24 }}
         onClick={() => setOpen(true)}
-        aria-label="Add planting"
+        aria-label="Add crop"
       >
         <AddIcon />
       </Fab>
-      {open && <AddPlantingDialog onClose={() => setOpen(false)} />}
+      {open && <AddCropDialog onClose={() => setOpen(false)} />}
     </Box>
   )
 }

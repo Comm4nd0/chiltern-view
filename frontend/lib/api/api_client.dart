@@ -5,11 +5,12 @@ import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../models/animal.dart';
 import '../models/care_task.dart';
+import '../models/crop.dart';
+import '../models/crop_catalog.dart';
 import '../models/egg_record.dart';
 import '../models/egg_summary.dart';
 import '../models/overview.dart';
 import '../models/person.dart';
-import '../models/potato_planting.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -147,33 +148,38 @@ class ApiClient {
     _check(res);
   }
 
-  // --- Potatoes -----------------------------------------------------------
-  Future<List<PotatoPlanting>> potatoTimeline({String show = 'growing'}) async {
-    final res = await _client.get(_uri('/potato-plantings/timeline/', {'show': show}));
+  // --- Crops --------------------------------------------------------------
+  Future<List<Crop>> crops({String show = 'growing'}) async {
+    final res = await _client.get(_uri('/crops/timeline/', {'show': show}));
     _check(res);
-    return _decodeList(res).map((e) => PotatoPlanting.fromJson(e as Map<String, dynamic>)).toList();
+    return _decodeList(res).map((e) => Crop.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<PotatoPlanting> createPlanting({
-    required String variety,
-    required String category,
+  Future<List<CropCatalogEntry>> cropCatalog() async {
+    final res = await _client.get(_uri('/crops/catalog/'));
+    _check(res);
+    final data = jsonDecode(res.body) as List<dynamic>;
+    return data.map((e) => CropCatalogEntry.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Crop> createCrop({
+    required String crop,
+    String variety = '',
     required DateTime plantedOn,
-    int? quantity,
     String bed = '',
   }) async {
     final res = await _client.post(
-      _uri('/potato-plantings/'),
+      _uri('/crops/'),
       headers: _jsonHeaders,
       body: jsonEncode({
+        'crop': crop,
         'variety': variety,
-        'category': category,
         'planted_on': _ymd(plantedOn),
         'bed': bed,
-        if (quantity != null) 'quantity': quantity,
       }),
     );
     _check(res);
-    return PotatoPlanting.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+    return Crop.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   // --- Eggs ---------------------------------------------------------------

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Animal, CareTask, EggRecord, LogEntry, Person, PotatoPlanting
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
 
 
 class PersonSerializer(serializers.ModelSerializer):
@@ -64,22 +64,22 @@ class EggRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at", "updated_at"]
 
 
-class PotatoStageSerializer(serializers.Serializer):
+class CropStageSerializer(serializers.Serializer):
     label = serializers.CharField()
     date = serializers.DateField()
 
 
-class PotatoPlantingSerializer(serializers.ModelSerializer):
-    category_display = serializers.CharField(source="get_category_display", read_only=True)
+class CropSerializer(serializers.ModelSerializer):
+    crop_label = serializers.CharField(read_only=True)
     estimated_harvest = serializers.DateField(read_only=True)
     current_stage = serializers.CharField(read_only=True)
     progress = serializers.FloatField(read_only=True)
-    stages = PotatoStageSerializer(many=True, read_only=True)
+    stages = CropStageSerializer(many=True, read_only=True)
 
     class Meta:
-        model = PotatoPlanting
+        model = Crop
         fields = [
-            "id", "variety", "category", "category_display",
+            "id", "crop", "crop_label", "variety",
             "planted_on", "quantity", "bed",
             "expected_harvest", "harvested_on", "yield_kg", "notes",
             "estimated_harvest", "current_stage", "progress", "stages",

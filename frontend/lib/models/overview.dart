@@ -31,13 +31,13 @@ class OverviewTask {
 }
 
 class NextHarvest {
-  final String variety;
+  final String label;
   final DateTime date;
 
-  NextHarvest({required this.variety, required this.date});
+  NextHarvest({required this.label, required this.date});
 
   factory NextHarvest.fromJson(Map<String, dynamic> json) => NextHarvest(
-        variety: json['variety'] as String? ?? '',
+        label: json['label'] as String? ?? '',
         date: asDate(json['date']),
       );
 }
@@ -50,7 +50,7 @@ class Overview {
   final List<OverviewTask> topTasks;
   final int animalsTotal;
   final Map<String, int> bySpecies;
-  final int potatoesGrowing;
+  final int cropsGrowing;
   final NextHarvest? nextHarvest;
   final int eggsToday;
   final int eggsThisWeek;
@@ -63,7 +63,7 @@ class Overview {
     required this.topTasks,
     required this.animalsTotal,
     required this.bySpecies,
-    required this.potatoesGrowing,
+    required this.cropsGrowing,
     required this.nextHarvest,
     required this.eggsToday,
     required this.eggsThisWeek,
@@ -72,9 +72,9 @@ class Overview {
   factory Overview.fromJson(Map<String, dynamic> json) {
     final tasks = json['tasks'] as Map<String, dynamic>? ?? {};
     final animals = json['animals'] as Map<String, dynamic>? ?? {};
-    final potatoes = json['potatoes'] as Map<String, dynamic>? ?? {};
+    final crops = json['crops'] as Map<String, dynamic>? ?? {};
     final eggs = json['eggs'] as Map<String, dynamic>? ?? {};
-    final nh = potatoes['next_harvest'] as Map<String, dynamic>?;
+    final nh = crops['next_harvest'] as Map<String, dynamic>?;
     return Overview(
       tasksOverdue: tasks['overdue'] as int? ?? 0,
       tasksDueToday: tasks['due_today'] as int? ?? 0,
@@ -87,7 +87,7 @@ class Overview {
       animalsTotal: animals['total'] as int? ?? 0,
       bySpecies: (animals['by_species'] as Map<String, dynamic>? ?? {})
           .map((k, v) => MapEntry(k, v as int)),
-      potatoesGrowing: potatoes['growing'] as int? ?? 0,
+      cropsGrowing: crops['growing'] as int? ?? 0,
       nextHarvest: nh == null ? null : NextHarvest.fromJson(nh),
       eggsToday: eggs['today'] as int? ?? 0,
       eggsThisWeek: eggs['this_week'] as int? ?? 0,

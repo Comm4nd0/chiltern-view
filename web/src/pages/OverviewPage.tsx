@@ -124,14 +124,14 @@ export default function OverviewPage() {
                   <Typography variant="h6" sx={{ flex: 1 }}>
                     Crops
                   </Typography>
-                  <Typography variant="h6">{data.potatoes.growing}</Typography>
+                  <Typography variant="h6">{data.crops.growing}</Typography>
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  {data.potatoes.growing === 0
+                  {data.crops.growing === 0
                     ? 'nothing growing'
-                    : data.potatoes.next_harvest
-                      ? `growing · next harvest ${data.potatoes.next_harvest.variety} ~ ${fmtDate(
-                          data.potatoes.next_harvest.date,
+                    : data.crops.next_harvest
+                      ? `growing · next harvest ${data.crops.next_harvest.label} ~ ${fmtDate(
+                          data.crops.next_harvest.date,
                         )}`
                       : 'growing'}
                 </Typography>

@@ -3,7 +3,7 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import OverviewPage from './pages/OverviewPage'
 import DashboardPage from './pages/DashboardPage'
-import PotatoTimelinePage from './pages/PotatoTimelinePage'
+import CropsPage from './pages/CropsPage'
 import AnimalsPage from './pages/AnimalsPage'
 import SettingsPage from './pages/SettingsPage'
 
@@ -46,7 +46,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<OverviewPage />} />
           <Route path="/todo" element={<DashboardPage />} />
-          <Route path="/crops" element={<PotatoTimelinePage />} />
+          <Route path="/crops" element={<CropsPage />} />
           <Route path="/animals" element={<AnimalsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

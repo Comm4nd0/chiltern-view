@@ -10,34 +10,28 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCreatePlanting } from '../api/hooks'
+import { useCreateCrop, useCropCatalog } from '../api/hooks'
 
-const categories = [
-  { value: 'first_early', label: 'First early' },
-  { value: 'second_early', label: 'Second early' },
-  { value: 'maincrop', label: 'Maincrop' },
-  { value: 'salad', label: 'Salad' },
-]
-
-export default function AddPlantingDialog({ onClose }: { onClose: () => void }) {
-  const createPlanting = useCreatePlanting()
+export default function AddCropDialog({ onClose }: { onClose: () => void }) {
+  const createCrop = useCreateCrop()
+  const catalog = useCropCatalog()
   const todayIso = new Date().toISOString().slice(0, 10)
 
+  const [crop, setCrop] = useState('')
   const [variety, setVariety] = useState('')
-  const [category, setCategory] = useState('maincrop')
   const [plantedOn, setPlantedOn] = useState(todayIso)
   const [bed, setBed] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const save = async () => {
-    if (!variety.trim()) {
-      setError('Enter a variety.')
+    if (!crop) {
+      setError('Pick a crop.')
       return
     }
     try {
-      await createPlanting.mutateAsync({
+      await createCrop.mutateAsync({
+        crop,
         variety: variety.trim(),
-        category,
         planted_on: plantedOn,
         bed: bed.trim(),
       })
@@ -49,28 +43,28 @@ export default function AddPlantingDialog({ onClose }: { onClose: () => void }) 
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>New potato planting</DialogTitle>
+      <DialogTitle>New crop</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
-            label="Variety (e.g. Maris Piper)"
-            value={variety}
-            onChange={(e) => setVariety(e.target.value)}
-            autoFocus
-            required
-          />
-          <TextField
             select
-            label="Type"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            label="Crop"
+            value={crop}
+            onChange={(e) => setCrop(e.target.value)}
+            autoFocus
+            helperText={catalog.isError ? 'Could not load the crop list' : undefined}
           >
-            {categories.map((c) => (
-              <MenuItem key={c.value} value={c.value}>
+            {(catalog.data ?? []).map((c) => (
+              <MenuItem key={c.key} value={c.key}>
                 {c.label}
               </MenuItem>
             ))}
           </TextField>
+          <TextField
+            label="Variety (optional, e.g. Maris Piper)"
+            value={variety}
+            onChange={(e) => setVariety(e.target.value)}
+          />
           <TextField
             label="Planted on"
             type="date"
@@ -88,7 +82,7 @@ export default function AddPlantingDialog({ onClose }: { onClose: () => void }) 
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={save} disabled={createPlanting.isPending}>
+        <Button variant="contained" onClick={save} disabled={createCrop.isPending}>
           Add
         </Button>
       </DialogActions>

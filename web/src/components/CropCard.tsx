@@ -1,32 +1,31 @@
 import { Box, Card, CardContent, Chip, LinearProgress, Stack, Typography } from '@mui/material'
-import type { PotatoPlanting } from '../api/types'
+import type { Crop } from '../api/types'
 import { fmtDate } from '../format'
 
-export default function PotatoTimelineCard({ planting }: { planting: PotatoPlanting }) {
-  const labels = planting.stages.map((s) => s.label)
-  const currentIndex = labels.indexOf(planting.current_stage)
+export default function CropCard({ crop }: { crop: Crop }) {
+  const labels = crop.stages.map((s) => s.label)
+  const currentIndex = labels.indexOf(crop.current_stage)
 
   return (
     <Card>
       <CardContent>
         <Stack direction="row" alignItems="center" spacing={1}>
           <Typography variant="subtitle1" fontWeight={600} sx={{ flex: 1 }}>
-            {planting.variety}
+            {crop.crop_label}
           </Typography>
-          <Chip label={planting.category_display} size="small" />
+          {crop.variety && <Chip label={crop.variety} size="small" />}
         </Stack>
-        {planting.bed && (
+        {crop.bed && (
           <Typography variant="body2" color="text.secondary">
-            {planting.bed}
+            {crop.bed}
           </Typography>
         )}
 
         <Box sx={{ overflowX: 'auto', mt: 1.5 }}>
           <Stack direction="row" sx={{ minWidth: 'min-content' }}>
-            {planting.stages.map((stage, i) => {
-              const reached =
-                planting.harvested_on != null || (currentIndex >= 0 && i <= currentIndex)
-              const isCurrent = stage.label === planting.current_stage
+            {crop.stages.map((stage, i) => {
+              const reached = crop.harvested_on != null || (currentIndex >= 0 && i <= currentIndex)
+              const isCurrent = stage.label === crop.current_stage
               return (
                 <Box key={stage.label} sx={{ width: 92, textAlign: 'center' }}>
                   <Box
@@ -52,17 +51,15 @@ export default function PotatoTimelineCard({ planting }: { planting: PotatoPlant
 
         <LinearProgress
           variant="determinate"
-          value={Math.round(planting.progress * 100)}
+          value={Math.round(crop.progress * 100)}
           sx={{ height: 8, borderRadius: 4, mt: 2 }}
         />
         <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
           <Typography variant="caption" color="text.secondary">
-            Planted {fmtDate(planting.planted_on)}
+            Planted {fmtDate(crop.planted_on)}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {planting.harvested_on
-              ? 'Harvested'
-              : `Harvest ~ ${fmtDate(planting.estimated_harvest)}`}
+            {crop.harvested_on ? 'Harvested' : `Harvest ~ ${fmtDate(crop.estimated_harvest)}`}
           </Typography>
         </Stack>
       </CardContent>

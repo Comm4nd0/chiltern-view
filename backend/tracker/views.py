@@ -8,14 +8,15 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from .models import Animal, CareTask, EggRecord, LogEntry, Person, PotatoPlanting
+from .crops import catalog_list
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
 from .serializers import (
     AnimalSerializer,
     CareTaskSerializer,
+    CropSerializer,
     EggRecordSerializer,
     LogEntrySerializer,
     PersonSerializer,
-    PotatoPlantingSerializer,
 )
 
 
@@ -61,12 +62,12 @@ def overview(request):
         label = animal.get_species_display()
         by_species[label] = by_species.get(label, 0) + 1
 
-    # --- Potatoes still in the ground ---
-    growing = list(PotatoPlanting.objects.filter(harvested_on__isnull=True))
+    # --- Crops still in the ground ---
+    growing = list(Crop.objects.filter(harvested_on__isnull=True))
     next_harvest = None
     if growing:
-        soonest = min(growing, key=lambda planting: planting.estimated_harvest)
-        next_harvest = {"variety": soonest.variety, "date": soonest.estimated_harvest}
+        soonest = min(growing, key=lambda crop: crop.estimated_harvest)
+        next_harvest = {"label": soonest.crop_label, "date": soonest.estimated_harvest}
 
     # --- Eggs ---
     week_start = today - timedelta(days=today.weekday())
@@ -83,7 +84,7 @@ def overview(request):
                 "top": top,
             },
             "animals": {"total": animals.count(), "by_species": by_species},
-            "potatoes": {"growing": len(growing), "next_harvest": next_harvest},
+            "crops": {"growing": len(growing), "next_harvest": next_harvest},
             "eggs": {"today": eggs_today, "this_week": eggs_week},
         }
     )
@@ -195,21 +196,26 @@ class EggRecordViewSet(viewsets.ModelViewSet):
         )
 
 
-class PotatoPlantingViewSet(viewsets.ModelViewSet):
-    queryset = PotatoPlanting.objects.all()
-    serializer_class = PotatoPlantingSerializer
-    filterset_fields = ["category", "variety"]
-    search_fields = ["variety", "bed", "notes"]
-    ordering_fields = ["planted_on", "variety", "created_at"]
+class CropViewSet(viewsets.ModelViewSet):
+    queryset = Crop.objects.all()
+    serializer_class = CropSerializer
+    filterset_fields = ["crop"]
+    search_fields = ["crop", "variety", "bed", "notes"]
+    ordering_fields = ["planted_on", "crop", "created_at"]
+
+    @action(detail=False)
+    def catalog(self, request):
+        """The code-defined crop catalog (types + growth stages) for dropdowns."""
+        return Response(catalog_list())
 
     @action(detail=False)
     def timeline(self, request):
-        """Plantings ordered oldest-first for the growth timeline.
+        """Crops ordered oldest-first for the growth timeline.
 
         Query params: show=growing (default) | all  -> 'growing' hides harvested.
         """
-        plantings = self.get_queryset().order_by("planted_on")
+        crops = self.get_queryset().order_by("planted_on")
         if request.query_params.get("show", "growing") == "growing":
-            plantings = plantings.filter(harvested_on__isnull=True)
-        serializer = self.get_serializer(plantings, many=True)
+            crops = crops.filter(harvested_on__isnull=True)
+        serializer = self.get_serializer(crops, many=True)
         return Response(serializer.data)

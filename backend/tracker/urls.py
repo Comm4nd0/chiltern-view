@@ -9,7 +9,7 @@ router.register("animals", views.AnimalViewSet)
 router.register("care-tasks", views.CareTaskViewSet)
 router.register("log-entries", views.LogEntryViewSet)
 router.register("egg-records", views.EggRecordViewSet)
-router.register("potato-plantings", views.PotatoPlantingViewSet)
+router.register("crops", views.CropViewSet)
 
 urlpatterns = [
     path("health/", views.health, name="health"),

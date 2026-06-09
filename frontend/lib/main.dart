@@ -4,8 +4,8 @@ import 'api/api_client.dart';
 import 'config.dart';
 import 'screens/animals_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/crops_screen.dart';
 import 'screens/overview_screen.dart';
-import 'screens/potato_timeline_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
 import 'theme.dart';
@@ -52,7 +52,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   late final List<Widget> _screens = [
     OverviewScreen(onOpenTab: (i) => setState(() => _index = i)),
     const DashboardScreen(),
-    const PotatoTimelineScreen(),
+    const CropsScreen(),
     const AnimalsScreen(),
   ];
 

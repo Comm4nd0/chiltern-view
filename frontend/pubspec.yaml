@@ -1,5 +1,5 @@
 name: chiltern_view
-description: Smallholding tracker for Chiltern View — care tasks, potato timeline, egg log.
+description: Home management for Chiltern View — care tasks, crops, animals, egg log.
 publish_to: "none"
 version: 0.1.0+1
 

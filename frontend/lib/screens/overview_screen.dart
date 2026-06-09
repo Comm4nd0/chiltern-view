@@ -58,7 +58,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
           children: [
             _needsDoing(context, o),
             const SizedBox(height: 8),
-            _potatoes(context, o),
+            _crops(context, o),
             const SizedBox(height: 8),
             _eggs(context, o),
             const SizedBox(height: 8),
@@ -162,17 +162,17 @@ class _OverviewScreenState extends State<OverviewScreen> {
     );
   }
 
-  Widget _potatoes(BuildContext context, Overview o) {
+  Widget _crops(BuildContext context, Overview o) {
     final nh = o.nextHarvest;
     final String subtitle;
-    if (o.potatoesGrowing == 0) {
+    if (o.cropsGrowing == 0) {
       subtitle = 'nothing growing';
     } else if (nh != null) {
-      subtitle = 'growing · next harvest ${nh.variety} ~ ${DateFormat('d MMM').format(nh.date)}';
+      subtitle = 'growing · next harvest ${nh.label} ~ ${DateFormat('d MMM').format(nh.date)}';
     } else {
       subtitle = 'growing';
     }
-    return _section(context, Icons.grass, 'Crops', '${o.potatoesGrowing}', subtitle,
+    return _section(context, Icons.grass, 'Crops', '${o.cropsGrowing}', subtitle,
         () => widget.onOpenTab(2));
   }
 

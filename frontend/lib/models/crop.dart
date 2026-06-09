@@ -1,11 +1,22 @@
 import '../util/json.dart';
-import 'potato_stage.dart';
 
-class PotatoPlanting {
+class CropStage {
+  final String label;
+  final DateTime date;
+
+  CropStage({required this.label, required this.date});
+
+  factory CropStage.fromJson(Map<String, dynamic> json) => CropStage(
+        label: json['label'] as String? ?? '',
+        date: asDate(json['date']),
+      );
+}
+
+class Crop {
   final int id;
+  final String crop;
+  final String cropLabel;
   final String variety;
-  final String category;
-  final String categoryDisplay;
   final DateTime plantedOn;
   final int? quantity;
   final String bed;
@@ -15,14 +26,14 @@ class PotatoPlanting {
   final String notes;
   final DateTime estimatedHarvest;
   final String currentStage;
-  final double progress; // 0.0 .. 1.0
-  final List<PotatoStage> stages;
+  final double progress;
+  final List<CropStage> stages;
 
-  PotatoPlanting({
+  Crop({
     required this.id,
+    required this.crop,
+    required this.cropLabel,
     required this.variety,
-    required this.category,
-    required this.categoryDisplay,
     required this.plantedOn,
     required this.quantity,
     required this.bed,
@@ -36,11 +47,11 @@ class PotatoPlanting {
     required this.stages,
   });
 
-  factory PotatoPlanting.fromJson(Map<String, dynamic> json) => PotatoPlanting(
+  factory Crop.fromJson(Map<String, dynamic> json) => Crop(
         id: json['id'] as int,
+        crop: json['crop'] as String? ?? '',
+        cropLabel: json['crop_label'] as String? ?? '',
         variety: json['variety'] as String? ?? '',
-        category: json['category'] as String? ?? '',
-        categoryDisplay: json['category_display'] as String? ?? '',
         plantedOn: asDate(json['planted_on']),
         quantity: json['quantity'] as int?,
         bed: json['bed'] as String? ?? '',
@@ -52,7 +63,7 @@ class PotatoPlanting {
         currentStage: json['current_stage'] as String? ?? '',
         progress: asDouble(json['progress']),
         stages: (json['stages'] as List<dynamic>? ?? [])
-            .map((e) => PotatoStage.fromJson(e as Map<String, dynamic>))
+            .map((e) => CropStage.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 

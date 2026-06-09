@@ -2,34 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../api/api_client.dart';
-import '../models/potato_planting.dart';
+import '../models/crop.dart';
+import '../models/crop_catalog.dart';
 import '../widgets/async_view.dart';
-import '../widgets/potato_timeline_card.dart';
+import '../widgets/crop_card.dart';
 
-class PotatoTimelineScreen extends StatefulWidget {
-  const PotatoTimelineScreen({super.key});
+class CropsScreen extends StatefulWidget {
+  const CropsScreen({super.key});
 
   @override
-  State<PotatoTimelineScreen> createState() => _PotatoTimelineScreenState();
+  State<CropsScreen> createState() => _CropsScreenState();
 }
 
-class _PotatoTimelineScreenState extends State<PotatoTimelineScreen> {
+class _CropsScreenState extends State<CropsScreen> {
   final ApiClient _api = ApiClient();
-  late Future<List<PotatoPlanting>> _future;
+  late Future<List<Crop>> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _api.potatoTimeline();
+    _future = _api.crops();
   }
 
-  void _refresh() => setState(() => _future = _api.potatoTimeline());
+  void _refresh() => setState(() => _future = _api.crops());
 
-  Future<void> _addPlanting() async {
+  Future<void> _addCrop() async {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _AddPlantingSheet(api: _api),
+      builder: (_) => _AddCropSheet(api: _api),
     );
     if (created == true) _refresh();
   }
@@ -38,29 +39,29 @@ class _PotatoTimelineScreenState extends State<PotatoTimelineScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addPlanting,
+        onPressed: _addCrop,
         icon: const Icon(Icons.add),
-        label: const Text('Planting'),
+        label: const Text('Crop'),
       ),
       body: RefreshIndicator(
         onRefresh: () async => _refresh(),
-        child: AsyncView<List<PotatoPlanting>>(
+        child: AsyncView<List<Crop>>(
           future: _future,
           onRetry: _refresh,
-          builder: (context, plantings) {
-            if (plantings.isEmpty) {
+          builder: (context, crops) {
+            if (crops.isEmpty) {
               return ListView(
                 children: const [
                   SizedBox(height: 120),
-                  Center(child: Text('No potatoes in the ground yet.')),
+                  Center(child: Text('Nothing growing yet — add a crop.')),
                 ],
               );
             }
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: plantings.length,
-              itemBuilder: (context, i) => PotatoTimelineCard(planting: plantings[i]),
+              itemCount: crops.length,
+              itemBuilder: (context, i) => CropCard(crop: crops[i]),
             );
           },
         ),
@@ -69,28 +70,37 @@ class _PotatoTimelineScreenState extends State<PotatoTimelineScreen> {
   }
 }
 
-class _AddPlantingSheet extends StatefulWidget {
+class _AddCropSheet extends StatefulWidget {
   final ApiClient api;
-  const _AddPlantingSheet({required this.api});
+  const _AddCropSheet({required this.api});
 
   @override
-  State<_AddPlantingSheet> createState() => _AddPlantingSheetState();
+  State<_AddCropSheet> createState() => _AddCropSheetState();
 }
 
-class _AddPlantingSheetState extends State<_AddPlantingSheet> {
-  static const Map<String, String> _categories = {
-    'first_early': 'First early',
-    'second_early': 'Second early',
-    'maincrop': 'Maincrop',
-    'salad': 'Salad',
-  };
-
+class _AddCropSheetState extends State<_AddCropSheet> {
   final _formKey = GlobalKey<FormState>();
   final _variety = TextEditingController();
   final _bed = TextEditingController();
-  String _category = 'maincrop';
+  List<CropCatalogEntry> _catalog = [];
+  String? _crop;
   DateTime _plantedOn = DateTime.now();
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCatalog();
+  }
+
+  Future<void> _loadCatalog() async {
+    try {
+      final catalog = await widget.api.cropCatalog();
+      if (mounted) setState(() => _catalog = catalog);
+    } catch (_) {
+      // The crop dropdown just stays empty if the catalog can't be loaded.
+    }
+  }
 
   @override
   void dispose() {
@@ -113,9 +123,9 @@ class _AddPlantingSheetState extends State<_AddPlantingSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await widget.api.createPlanting(
+      await widget.api.createCrop(
+        crop: _crop!,
         variety: _variety.text.trim(),
-        category: _category,
         plantedOn: _plantedOn,
         bed: _bed.text.trim(),
       );
@@ -139,25 +149,25 @@ class _AddPlantingSheetState extends State<_AddPlantingSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('New potato planting', style: Theme.of(context).textTheme.titleLarge),
+            Text('New crop', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _crop,
+              decoration: const InputDecoration(labelText: 'Crop', border: OutlineInputBorder()),
+              items: [
+                for (final entry in _catalog)
+                  DropdownMenuItem<String>(value: entry.key, child: Text(entry.label)),
+              ],
+              onChanged: (v) => setState(() => _crop = v),
+              validator: (v) => v == null ? 'Pick a crop' : null,
+            ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _variety,
               decoration: const InputDecoration(
-                labelText: 'Variety (e.g. Maris Piper)',
+                labelText: 'Variety (optional, e.g. Maris Piper)',
                 border: OutlineInputBorder(),
               ),
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _category,
-              decoration: const InputDecoration(labelText: 'Type', border: OutlineInputBorder()),
-              items: [
-                for (final entry in _categories.entries)
-                  DropdownMenuItem<String>(value: entry.key, child: Text(entry.value)),
-              ],
-              onChanged: (v) => setState(() => _category = v ?? 'maincrop'),
             ),
             const SizedBox(height: 12),
             TextFormField(

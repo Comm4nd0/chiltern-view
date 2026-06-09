@@ -1,11 +1,12 @@
 import type {
   Animal,
   CareTask,
+  Crop,
+  CropCatalogEntry,
   EggRecord,
   EggSummary,
   Overview,
   Person,
-  PotatoPlanting,
 } from './types'
 
 // Same-origin in production (nginx proxies /api to the backend); the Vite dev
@@ -41,9 +42,9 @@ export interface CreateTaskInput {
   assignee?: number | null
 }
 
-export interface CreatePlantingInput {
-  variety: string
-  category: string
+export interface CreateCropInput {
+  crop: string
+  variety?: string
   planted_on: string
   bed?: string
   quantity?: number | null
@@ -74,15 +75,11 @@ export const api = {
     request<Animal>('/animals/', { method: 'POST', body: JSON.stringify(input) }),
   deleteAnimal: (id: number) => request<void>(`/animals/${id}/`, { method: 'DELETE' }),
 
-  potatoTimeline: (show = 'growing') =>
-    request<unknown>(`/potato-plantings/timeline/?show=${show}`).then(
-      decodeList<PotatoPlanting>,
-    ),
-  createPlanting: (input: CreatePlantingInput) =>
-    request<PotatoPlanting>('/potato-plantings/', {
-      method: 'POST',
-      body: JSON.stringify(input),
-    }),
+  crops: (show = 'growing') =>
+    request<unknown>(`/crops/timeline/?show=${show}`).then(decodeList<Crop>),
+  cropCatalog: () => request<CropCatalogEntry[]>('/crops/catalog/'),
+  createCrop: (input: CreateCropInput) =>
+    request<Crop>('/crops/', { method: 'POST', body: JSON.stringify(input) }),
 
   eggSummary: () => request<EggSummary>('/egg-records/summary/'),
   recentEggs: () => request<unknown>('/egg-records/?ordering=-date').then(decodeList<EggRecord>),

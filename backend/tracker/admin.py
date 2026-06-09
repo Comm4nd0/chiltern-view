@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Animal, CareTask, EggRecord, LogEntry, Person, PotatoPlanting
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
 
 
 @admin.register(Person)
@@ -42,11 +42,11 @@ class EggRecordAdmin(admin.ModelAdmin):
     date_hierarchy = "date"
 
 
-@admin.register(PotatoPlanting)
-class PotatoPlantingAdmin(admin.ModelAdmin):
-    list_display = ["variety", "category", "planted_on", "estimated_harvest", "current_stage", "harvested_on"]
-    list_filter = ["category", "harvested_on"]
-    search_fields = ["variety", "bed", "notes"]
+@admin.register(Crop)
+class CropAdmin(admin.ModelAdmin):
+    list_display = ["crop", "variety", "planted_on", "estimated_harvest", "current_stage", "harvested_on"]
+    list_filter = ["crop", "harvested_on"]
+    search_fields = ["crop", "variety", "bed", "notes"]
 
     @admin.display(description="Est. harvest")
     def estimated_harvest(self, obj):

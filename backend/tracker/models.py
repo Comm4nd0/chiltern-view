@@ -4,6 +4,8 @@ from datetime import timedelta
 from django.db import models
 from django.utils import timezone
 
+from .crops import CROP_CATALOG, DEFAULT_DAYS_TO_HARVEST, DEFAULT_STAGES
+
 
 class Animal(models.Model):
     """An animal (or colony) kept on the smallholding."""
@@ -195,37 +197,14 @@ class EggRecord(models.Model):
         return f"{self.date}: {self.count} eggs{label}"
 
 
-class PotatoPlanting(models.Model):
-    """A planting of seed potatoes, used to drive the growth timeline."""
+class Crop(models.Model):
+    """A planting of a crop, used to drive the growth timeline. The crop type and
+    its growth stages/timing come from the catalog in ``crops.py``."""
 
-    class Category(models.TextChoices):
-        FIRST_EARLY = "first_early", "First early"
-        SECOND_EARLY = "second_early", "Second early"
-        MAINCROP = "maincrop", "Maincrop"
-        SALAD = "salad", "Salad"
-
-    # Approximate days from planting to harvest, by category (UK growing guide).
-    DAYS_TO_HARVEST = {
-        "first_early": 75,
-        "second_early": 95,
-        "maincrop": 125,
-        "salad": 110,
-    }
-
-    # Fraction of the season at which each growth stage typically begins.
-    STAGE_BLUEPRINT = [
-        ("Planted", 0.0),
-        ("Sprouting", 0.18),
-        ("Earthing up", 0.35),
-        ("Flowering", 0.55),
-        ("Tuber bulking", 0.70),
-        ("Ready to harvest", 1.0),
-    ]
-
-    variety = models.CharField(max_length=120)
-    category = models.CharField(max_length=20, choices=Category.choices, default=Category.MAINCROP)
+    crop = models.CharField(max_length=50, help_text="Catalog key, e.g. 'carrots'.")
+    variety = models.CharField(max_length=120, blank=True)
     planted_on = models.DateField(default=timezone.localdate)
-    quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Number of seed potatoes.")
+    quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Number planted/sown.")
     bed = models.CharField(max_length=120, blank=True, help_text="Bed / row / location.")
     expected_harvest = models.DateField(
         null=True, blank=True, help_text="Override the estimated harvest date."
@@ -240,11 +219,21 @@ class PotatoPlanting(models.Model):
         ordering = ["-planted_on"]
 
     def __str__(self):
-        return f"{self.variety} ({self.get_category_display()})"
+        return self.crop_label + (f" — {self.variety}" if self.variety else "")
+
+    @property
+    def _entry(self):
+        return CROP_CATALOG.get(self.crop)
+
+    @property
+    def crop_label(self):
+        entry = self._entry
+        return entry["label"] if entry else self.crop.replace("_", " ").title()
 
     @property
     def season_days(self):
-        return self.DAYS_TO_HARVEST.get(self.category, 110)
+        entry = self._entry
+        return entry["days_to_harvest"] if entry else DEFAULT_DAYS_TO_HARVEST
 
     @property
     def estimated_harvest(self):
@@ -254,11 +243,12 @@ class PotatoPlanting(models.Model):
 
     @property
     def stages(self):
-        """The growth-stage timeline, scaled to this variety's season length."""
+        """The growth-stage timeline, scaled to this crop's season length."""
         total = (self.estimated_harvest - self.planted_on).days or 1
+        blueprint = self._entry["stages"] if self._entry else DEFAULT_STAGES
         return [
             {"label": label, "date": self.planted_on + timedelta(days=round(total * frac))}
-            for label, frac in self.STAGE_BLUEPRINT
+            for label, frac in blueprint
         ]
 
     @property

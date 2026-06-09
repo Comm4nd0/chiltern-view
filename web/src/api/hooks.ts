@@ -5,7 +5,7 @@ export const keys = {
   dashboard: (assignee?: string) => ['dashboard', assignee ?? 'all'] as const,
   people: ['people'] as const,
   animals: ['animals'] as const,
-  potatoes: (show: string) => ['potatoes', show] as const,
+  crops: (show: string) => ['crops', show] as const,
   eggSummary: ['eggs', 'summary'] as const,
   eggRecent: ['eggs', 'recent'] as const,
 }
@@ -48,8 +48,16 @@ export function useDeleteAnimal() {
   })
 }
 
-export function usePotatoTimeline(show = 'growing') {
-  return useQuery({ queryKey: keys.potatoes(show), queryFn: () => api.potatoTimeline(show) })
+export function useCrops(show = 'growing') {
+  return useQuery({ queryKey: keys.crops(show), queryFn: () => api.crops(show) })
+}
+
+export function useCropCatalog() {
+  return useQuery({
+    queryKey: ['cropCatalog'],
+    queryFn: api.cropCatalog,
+    staleTime: 1000 * 60 * 60,
+  })
 }
 
 export function useEggSummary() {
@@ -104,12 +112,12 @@ export function useDeletePerson() {
   })
 }
 
-export function useCreatePlanting() {
+export function useCreateCrop() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: api.createPlanting,
+    mutationFn: api.createCrop,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['potatoes'] })
+      qc.invalidateQueries({ queryKey: ['crops'] })
       qc.invalidateQueries({ queryKey: ['overview'] })
     },
   })

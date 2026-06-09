@@ -27,16 +27,16 @@ export interface CareTask {
   status: 'overdue' | 'due_today' | 'upcoming'
 }
 
-export interface PotatoStage {
+export interface CropStage {
   label: string
   date: string
 }
 
-export interface PotatoPlanting {
+export interface Crop {
   id: number
+  crop: string
+  crop_label: string
   variety: string
-  category: string
-  category_display: string
   planted_on: string
   quantity: number | null
   bed: string
@@ -47,7 +47,14 @@ export interface PotatoPlanting {
   estimated_harvest: string
   current_stage: string
   progress: number
-  stages: PotatoStage[]
+  stages: CropStage[]
+}
+
+export interface CropCatalogEntry {
+  key: string
+  label: string
+  days_to_harvest: number
+  stages: { label: string; fraction: number }[]
 }
 
 export interface EggRecord {
@@ -82,6 +89,6 @@ export interface Overview {
     top: OverviewTask[]
   }
   animals: { total: number; by_species: Record<string, number> }
-  potatoes: { growing: number; next_harvest: { variety: string; date: string } | null }
+  crops: { growing: number; next_harvest: { label: string; date: string } | null }
   eggs: { today: number; this_week: number }
 }
