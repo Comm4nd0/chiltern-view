@@ -3,6 +3,7 @@ import type {
   CareTask,
   EggRecord,
   EggSummary,
+  Overview,
   Person,
   PotatoPlanting,
 } from './types'
@@ -49,6 +50,7 @@ export interface CreatePlantingInput {
 }
 
 export const api = {
+  overview: () => request<Overview>('/overview/'),
   dashboard: (assignee?: string) =>
     request<unknown>(
       `/care-tasks/dashboard/${assignee ? `?assignee=${encodeURIComponent(assignee)}` : ''}`,

@@ -10,6 +10,10 @@ export const keys = {
   eggRecent: ['eggs', 'recent'] as const,
 }
 
+export function useOverview() {
+  return useQuery({ queryKey: ['overview'], queryFn: api.overview })
+}
+
 export function useDashboard(assignee?: string) {
   return useQuery({ queryKey: keys.dashboard(assignee), queryFn: () => api.dashboard(assignee) })
 }
@@ -38,7 +42,10 @@ export function useCompleteTask() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, note }: { id: number; note?: string }) => api.completeTask(id, note),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
   })
 }
 
@@ -46,7 +53,10 @@ export function useCreateTask() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: api.createTask,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
   })
 }
 
@@ -54,7 +64,10 @@ export function useCreatePerson() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (name: string) => api.createPerson(name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.people }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.people })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
   })
 }
 
@@ -62,7 +75,10 @@ export function useDeletePerson() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => api.deletePerson(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: keys.people }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.people })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
   })
 }
 
@@ -70,7 +86,10 @@ export function useCreatePlanting() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: api.createPlanting,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['potatoes'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['potatoes'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
   })
 }
 
@@ -79,6 +98,9 @@ export function useIncrementEggs() {
   return useMutation({
     mutationFn: ({ count, source }: { count: number; source?: string }) =>
       api.incrementEggs(count, source),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['eggs'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['eggs'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
   })
 }

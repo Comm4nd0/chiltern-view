@@ -1,9 +1,23 @@
 # Chiltern View — project guide for Claude
 
-Smallholding tracker: a **Django + DRF** backend (Docker, runs on the **Luma001**
-home server), a **Flutter** mobile app (`frontend/`), and a **React** web app
-(`web/`) — "what needs doing" dashboard, potato growth timeline, egg log, and
-per-person task assignment. See [README.md](README.md) for the full picture.
+**Home management application** for **Marco and Claire** to run their house and
+smallholding. A **Django + DRF** backend (Docker, on the **Luma001** home server),
+a **Flutter** mobile app (`frontend/`), and a **React** web app (`web/`). See
+[README.md](README.md) for the full picture.
+
+## Product vision (north star)
+
+A single place to manage the home. Priorities, in order:
+1. **Front page = an at-a-glance dashboard** of the current state of the house —
+   what needs doing, animals, crops, eggs, and whatever else we add. Not just a
+   task list; an overview.
+2. **A strong to-do list**: create tasks, mark them complete, and get **reminders
+   when tasks are due or overdue**.
+3. **Manage the animals and the crops**, and stay **easily extensible** to other
+   things we want to track later.
+
+Built for two people (Marco + Claire); both must always get the same experience
+(see the parity rule below).
 
 ## ⚠️ Web and mobile must stay in lockstep (non-negotiable)
 

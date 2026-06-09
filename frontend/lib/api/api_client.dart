@@ -7,6 +7,7 @@ import '../models/animal.dart';
 import '../models/care_task.dart';
 import '../models/egg_record.dart';
 import '../models/egg_summary.dart';
+import '../models/overview.dart';
 import '../models/person.dart';
 import '../models/potato_planting.dart';
 
@@ -47,6 +48,13 @@ class ApiClient {
       return body['results'] as List<dynamic>;
     }
     return body as List<dynamic>;
+  }
+
+  // --- Overview -----------------------------------------------------------
+  Future<Overview> overview() async {
+    final res = await _client.get(_uri('/overview/'));
+    _check(res);
+    return Overview.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   // --- Care tasks ---------------------------------------------------------

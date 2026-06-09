@@ -13,5 +13,6 @@ router.register("potato-plantings", views.PotatoPlantingViewSet)
 
 urlpatterns = [
     path("health/", views.health, name="health"),
+    path("overview/", views.overview, name="overview"),
     path("", include(router.urls)),
 ]

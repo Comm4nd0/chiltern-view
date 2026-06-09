@@ -26,6 +26,69 @@ def health(request):
     return Response({"status": "ok", "time": timezone.now().isoformat()})
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def overview(request):
+    """At-a-glance summary of the whole holding for the home dashboard.
+
+    One call returns task counts / top-overdue, animal counts, potato status, and
+    egg totals, so each client renders the front page with a single request.
+    """
+    today = timezone.localdate()
+
+    # --- Tasks (reuse CareTask's computed scheduling fields) ---
+    tasks = list(CareTask.objects.select_related("assignee").filter(active=True))
+    tasks.sort(key=lambda task: task.days_overdue, reverse=True)
+    per_person = {}
+    for task in tasks:
+        label = task.assignee.name if task.assignee else "Unassigned"
+        per_person[label] = per_person.get(label, 0) + 1
+    top = [
+        {
+            "id": task.id,
+            "name": task.name,
+            "assignee_name": task.assignee.name if task.assignee else None,
+            "days_overdue": task.days_overdue,
+            "status": task.status,
+        }
+        for task in tasks[:5]
+    ]
+
+    # --- Animals ---
+    animals = Animal.objects.filter(active=True)
+    by_species = {}
+    for animal in animals:
+        label = animal.get_species_display()
+        by_species[label] = by_species.get(label, 0) + 1
+
+    # --- Potatoes still in the ground ---
+    growing = list(PotatoPlanting.objects.filter(harvested_on__isnull=True))
+    next_harvest = None
+    if growing:
+        soonest = min(growing, key=lambda planting: planting.estimated_harvest)
+        next_harvest = {"variety": soonest.variety, "date": soonest.estimated_harvest}
+
+    # --- Eggs ---
+    week_start = today - timedelta(days=today.weekday())
+    eggs_today = EggRecord.objects.filter(date=today).aggregate(n=Sum("count"))["n"] or 0
+    eggs_week = EggRecord.objects.filter(date__gte=week_start).aggregate(n=Sum("count"))["n"] or 0
+
+    return Response(
+        {
+            "tasks": {
+                "overdue": sum(1 for t in tasks if t.days_overdue > 0),
+                "due_today": sum(1 for t in tasks if t.days_overdue == 0),
+                "upcoming": sum(1 for t in tasks if t.days_overdue < 0),
+                "per_person": per_person,
+                "top": top,
+            },
+            "animals": {"total": animals.count(), "by_species": by_species},
+            "potatoes": {"growing": len(growing), "next_harvest": next_harvest},
+            "eggs": {"today": eggs_today, "this_week": eggs_week},
+        }
+    )
+
+
 class PersonViewSet(viewsets.ModelViewSet):
     queryset = Person.objects.all()
     serializer_class = PersonSerializer

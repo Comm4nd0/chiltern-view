@@ -1,13 +1,15 @@
 import { AppBar, Box, Container, IconButton, Tab, Tabs, Toolbar, Typography } from '@mui/material'
 import SettingsIcon from '@mui/icons-material/Settings'
 import { Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import OverviewPage from './pages/OverviewPage'
 import DashboardPage from './pages/DashboardPage'
 import PotatoTimelinePage from './pages/PotatoTimelinePage'
 import EggLogPage from './pages/EggLogPage'
 import SettingsPage from './pages/SettingsPage'
 
 const tabs = [
-  { label: 'To do', path: '/' },
+  { label: 'Home', path: '/' },
+  { label: 'To do', path: '/todo' },
   { label: 'Potatoes', path: '/potatoes' },
   { label: 'Eggs', path: '/eggs' },
 ]
@@ -42,7 +44,8 @@ export default function App() {
       </AppBar>
       <Container maxWidth="sm" sx={{ py: 2 }}>
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={<OverviewPage />} />
+          <Route path="/todo" element={<DashboardPage />} />
           <Route path="/potatoes" element={<PotatoTimelinePage />} />
           <Route path="/eggs" element={<EggLogPage />} />
           <Route path="/settings" element={<SettingsPage />} />

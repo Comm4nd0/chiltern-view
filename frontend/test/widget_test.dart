@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:chiltern_view/models/care_task.dart';
 import 'package:chiltern_view/models/egg_summary.dart';
+import 'package:chiltern_view/models/overview.dart';
 import 'package:chiltern_view/models/person.dart';
 import 'package:chiltern_view/models/potato_planting.dart';
 
@@ -113,5 +114,40 @@ void main() {
     final c = Person.fromJson({'id': 8, 'name': 'Sam'});
     expect(a, equals(b)); // identity by id — needed for dropdown matching
     expect(a, isNot(equals(c)));
+  });
+
+  test('Overview parses the aggregate payload', () {
+    final o = Overview.fromJson({
+      'tasks': {
+        'overdue': 2,
+        'due_today': 1,
+        'upcoming': 3,
+        'per_person': {'Marco': 3, 'Claire': 2, 'Unassigned': 1},
+        'top': [
+          {
+            'id': 1,
+            'name': 'Worm the goats',
+            'assignee_name': 'Marco',
+            'days_overdue': 30,
+            'status': 'overdue',
+          },
+        ],
+      },
+      'animals': {
+        'total': 3,
+        'by_species': {'Goat': 1, 'Chicken': 1, 'Pig': 1},
+      },
+      'potatoes': {
+        'growing': 3,
+        'next_harvest': {'variety': 'Charlotte', 'date': '2026-07-14'},
+      },
+      'eggs': {'today': 5, 'this_week': 12},
+    });
+    expect(o.tasksOverdue, 2);
+    expect(o.perPerson['Marco'], 3);
+    expect(o.topTasks.single.dueLabel, '30d overdue');
+    expect(o.animalsTotal, 3);
+    expect(o.nextHarvest?.variety, 'Charlotte');
+    expect(o.eggsThisWeek, 12);
   });
 }

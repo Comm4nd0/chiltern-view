@@ -4,6 +4,7 @@ import 'api/api_client.dart';
 import 'config.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/egg_log_screen.dart';
+import 'screens/overview_screen.dart';
 import 'screens/potato_timeline_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
@@ -41,11 +42,18 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   final ApiClient _api = ApiClient();
   int _index = 0;
 
-  static const List<String> _titles = ['What needs doing', 'Potato timeline', 'Egg log'];
-  static const List<Widget> _screens = [
-    DashboardScreen(),
-    PotatoTimelineScreen(),
-    EggLogScreen(),
+  static const List<String> _titles = [
+    'Chiltern View',
+    'What needs doing',
+    'Potato timeline',
+    'Egg log',
+  ];
+
+  late final List<Widget> _screens = [
+    OverviewScreen(onOpenTab: (i) => setState(() => _index = i)),
+    const DashboardScreen(),
+    const PotatoTimelineScreen(),
+    const EggLogScreen(),
   ];
 
   @override
@@ -97,6 +105,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
           NavigationDestination(
             icon: Icon(Icons.checklist_outlined),
             selectedIcon: Icon(Icons.checklist),

@@ -63,3 +63,24 @@ export interface EggSummary {
   this_month: number
   total: number
 }
+
+export interface OverviewTask {
+  id: number
+  name: string
+  assignee_name: string | null
+  days_overdue: number
+  status: 'overdue' | 'due_today' | 'upcoming'
+}
+
+export interface Overview {
+  tasks: {
+    overdue: number
+    due_today: number
+    upcoming: number
+    per_person: Record<string, number>
+    top: OverviewTask[]
+  }
+  animals: { total: number; by_species: Record<string, number> }
+  potatoes: { growing: number; next_harvest: { variety: string; date: string } | null }
+  eggs: { today: number; this_week: number }
+}
