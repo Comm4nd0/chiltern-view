@@ -17,6 +17,8 @@ const _green = Color(0xFF34C759);
 const _orange = Color(0xFFFF9500);
 const _blue = Color(0xFF007AFF);
 const _purple = Color(0xFFAF52DE);
+const _sky = Color(0xFF5AC8FA);
+const _rainBlue = Color(0xFF0A84FF);
 
 /// A rounded, tinted square holding an icon — the iOS Settings-row motif.
 class _IconTile extends StatelessWidget {
@@ -86,11 +88,117 @@ class _OverviewScreenState extends State<OverviewScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
+            if (o.weather != null) _weather(context, o.weather!),
             _needsDoing(context, o),
             _crops(context, o),
             _eggs(context, o),
             _animals(context, o),
             if (o.activity.isNotEmpty) _recentNotes(context, o),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Today + the next few days at the holding, with frost warnings.
+  Widget _weather(BuildContext context, Weather w) {
+    final theme = Theme.of(context);
+    final today = w.today;
+    final dayFmt = DateFormat('E');
+    String temp(double? v) => v == null ? '–' : '${v.round()}';
+    final rainBits = <String>[
+      if (today != null) '${today.precipMm.round()} mm today',
+      if (w.recentRainMm > 0) '${w.recentRainMm} mm last 2 days',
+    ];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _IconTile(PhosphorIcons.cloudSun(PhosphorIconsStyle.fill), _sky),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Weather', style: theme.textTheme.titleMedium),
+                      Text(
+                        [w.location, ...rainBits].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                if (today != null)
+                  Text('${temp(today.tmin)}–${temp(today.tmax)}°',
+                      style: theme.textTheme.titleLarge),
+              ],
+            ),
+            if (w.days.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  for (final day in w.days)
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(dayFmt.format(day.date),
+                              style: theme.textTheme.labelSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
+                          Text('${temp(day.tmin)}–${temp(day.tmax)}°',
+                              style: theme.textTheme.bodyMedium),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (day.frost)
+                                Icon(PhosphorIcons.snowflake(PhosphorIconsStyle.bold),
+                                    size: 12, color: _rainBlue),
+                              if (day.precipMm > 0) ...[
+                                Icon(PhosphorIcons.drop(PhosphorIconsStyle.fill),
+                                    size: 12, color: _sky),
+                                Text('${day.precipMm.round()}mm',
+                                    style: theme.textTheme.bodySmall),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            if (w.frostWarning != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _orange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Icon(PhosphorIcons.snowflake(PhosphorIconsStyle.fill),
+                        size: 18, color: _rainBlue),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(w.frostWarning!.message,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            if (w.stale) ...[
+              const SizedBox(height: 8),
+              Text('Offline — showing the last fetched forecast.',
+                  style: theme.textTheme.bodySmall),
+            ],
           ],
         ),
       ),
@@ -145,7 +253,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   Widget _topTask(BuildContext context, OverviewTask t) {
-    final color = AppTheme.statusColor(t.status);
+    // Rain-deferred watering shows calm blue instead of urgency colours.
+    final color = t.rainDeferred ? _rainBlue : AppTheme.statusColor(t.status);
+    final label = t.rainDeferred ? (t.weatherNote ?? 'rain — deferred') : t.dueLabel;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -164,7 +274,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w500)),
-                Text(t.dueLabel,
+                Text(label,
                     style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
               ],
             ),

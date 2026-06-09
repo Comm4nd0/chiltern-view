@@ -1,5 +1,7 @@
 """Tests for the holding journal: log entry authorship, type filtering, and the
 recent-activity feed on the overview."""
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -15,6 +17,10 @@ class JournalTests(APITestCase):
         token = Token.objects.create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
         self.animal = Animal.objects.create(name="Clover", species="goat")
+        # Keep the overview's weather lookup off the network.
+        patcher = patch("tracker.views.get_weather", return_value=None)
+        self.addCleanup(patcher.stop)
+        patcher.start()
 
     def test_create_stamps_author_from_login(self):
         res = self.client.post(

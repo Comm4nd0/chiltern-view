@@ -25,6 +25,7 @@ import { useCompleteTask, useOverview } from '../api/hooks'
 import type { OverviewTask } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
 import AssigneeAvatar from '../components/AssigneeAvatar'
+import WeatherCard from '../components/WeatherCard'
 import { statusColor } from '../theme'
 import { fmtDate } from '../format'
 
@@ -120,6 +121,8 @@ export default function OverviewPage() {
     <QueryBoundary query={overview}>
       {(data) => (
         <Stack spacing={2}>
+          {data.weather && <WeatherCard weather={data.weather} />}
+
           {/* Needs doing */}
           <Card>
             <CardContent>
@@ -173,9 +176,12 @@ export default function OverviewPage() {
                         </Typography>
                         <Typography
                           variant="caption"
-                          sx={{ color: statusColor(task.status), fontWeight: 600 }}
+                          sx={{
+                            color: task.rain_deferred ? '#0A84FF' : statusColor(task.status),
+                            fontWeight: 600,
+                          }}
                         >
-                          {dueLabel(task)}
+                          {task.rain_deferred ? (task.weather_note ?? 'rain — deferred') : dueLabel(task)}
                         </Typography>
                       </Box>
                       {task.assignee_name && <AssigneeAvatar name={task.assignee_name} size={24} />}

@@ -1,5 +1,5 @@
-import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material'
-import { Clock, Check } from '@phosphor-icons/react'
+import { Box, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material'
+import { Clock, Check, CloudRain } from '@phosphor-icons/react'
 import type { CareTask } from '../api/types'
 import { statusColor } from '../theme'
 import { fmtDate } from '../format'
@@ -51,6 +51,20 @@ export default function CareTaskCard({
               <Typography variant="body2" sx={{ color, fontWeight: 600 }}>
                 {dueLabel(task)}
               </Typography>
+              {task.rain_deferred && (
+                <Chip
+                  size="small"
+                  icon={<CloudRain size={14} weight="fill" color="#0A84FF" />}
+                  label={task.weather_note ?? 'rain — deferred'}
+                  sx={{
+                    bgcolor: '#5AC8FA22',
+                    color: '#0A84FF',
+                    fontWeight: 600,
+                    height: 22,
+                    ml: 0.5,
+                  }}
+                />
+              )}
               <Box sx={{ flex: 1 }} />
               <Typography variant="caption" color="text.secondary">
                 {fmtDate(task.next_due)}

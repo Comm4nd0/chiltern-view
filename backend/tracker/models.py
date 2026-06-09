@@ -241,6 +241,25 @@ class EggRecord(models.Model):
         return f"{self.date}: {self.count} eggs{label}"
 
 
+class WeatherSnapshot(models.Model):
+    """The most recently fetched Open-Meteo forecast.
+
+    A single row shared by all gunicorn workers, refreshed on demand when it
+    goes stale — see ``tracker/weather.py``. Kept as a model (not a cache) so
+    it survives restarts and the push-reminder job can reuse it.
+    """
+
+    fetched_at = models.DateTimeField(default=timezone.now)
+    payload = models.JSONField()
+
+    class Meta:
+        ordering = ["-fetched_at"]
+        get_latest_by = "fetched_at"
+
+    def __str__(self):
+        return f"Weather @ {self.fetched_at:%Y-%m-%d %H:%M}"
+
+
 class Crop(models.Model):
     """A planting of a crop, used to drive the growth timeline. The crop type and
     its growth stages/timing come from the catalog in ``crops.py``."""

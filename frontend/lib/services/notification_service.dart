@@ -95,11 +95,17 @@ class NotificationService {
         );
 
     // --- Morning digest: for each day in the window, list what's due/overdue.
+    // Rain-deferred watering jobs are left out of TODAY's digest only — the
+    // flag reflects the forecast at sync time, so it's best-effort and the
+    // schedule re-syncs every time the app comes to the foreground.
     for (var offset = 0; offset <= _windowDays && id < _maxScheduled; offset++) {
       final day = today.add(Duration(days: offset));
       final when = fireTime(day);
       if (when.isBefore(now)) continue; // today's time already passed
-      final due = myTasks.where((t) => !_dueDate(t).isAfter(day)).toList();
+      final due = myTasks
+          .where((t) => !_dueDate(t).isAfter(day))
+          .where((t) => !(offset == 0 && t.rainDeferred))
+          .toList();
       if (due.isEmpty) continue;
       await _schedule(id++, 'Tasks to do', _digestBody(due), when);
     }
@@ -111,6 +117,7 @@ class NotificationService {
       if (dueDate.isAfter(horizon)) continue;
       final when = fireTime(dueDate);
       if (when.isBefore(now)) continue; // overdue/today-past — digest covers it
+      if (task.rainDeferred && !dueDate.isAfter(today)) continue; // rain covers today
       final detail = task.animalName != null ? 'For ${task.animalName}' : 'Care task due today';
       await _schedule(id++, 'Due today: ${task.name}', detail, when);
     }

@@ -35,6 +35,9 @@ export interface CareTask {
   next_due: string
   days_overdue: number
   status: 'overdue' | 'due_today' | 'upcoming'
+  /** True when recent/forecast rain covers this watering job for today. */
+  rain_deferred: boolean
+  weather_note: string | null
 }
 
 export interface CropStage {
@@ -111,6 +114,33 @@ export interface OverviewTask {
   assignee_name: string | null
   days_overdue: number
   status: 'overdue' | 'due_today' | 'upcoming'
+  rain_deferred: boolean
+  weather_note: string | null
+}
+
+export interface WeatherDay {
+  date: string
+  tmin: number | null
+  tmax: number | null
+  precip_mm: number
+  precip_prob: number | null
+  frost: boolean
+}
+
+export interface FrostWarning {
+  nights: string[]
+  crops: string[]
+  message: string
+}
+
+export interface Weather {
+  location: string
+  fetched_at: string
+  recent_rain_mm: number
+  today: WeatherDay | null
+  days: WeatherDay[]
+  stale: boolean
+  frost_warning: FrostWarning | null
 }
 
 export interface OverviewActivityEntry {
@@ -136,4 +166,5 @@ export interface Overview {
   crops: { growing: number; next_harvest: { label: string; date: string } | null }
   eggs: { today: number; this_week: number }
   activity: OverviewActivityEntry[]
+  weather: Weather | null
 }

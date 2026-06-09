@@ -11,6 +11,8 @@ from rest_framework.response import Response
 
 from .care_sync import close_crop_tasks, resync_crop_tasks
 from .crops import catalog_list
+from .watering import apply_rain_deferral, effective_days_overdue, effective_status
+from .weather import frost_warning, get_weather
 from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
 from .serializers import (
     AnimalSerializer,
@@ -46,9 +48,13 @@ def overview(request):
     """
     today = timezone.localdate()
 
+    # --- Weather (also drives rain-deferral of watering tasks below) ---
+    weather = get_weather()
+
     # --- Tasks (reuse CareTask's computed scheduling fields) ---
     tasks = list(CareTask.objects.select_related("assignee").filter(active=True))
-    tasks.sort(key=lambda task: task.days_overdue, reverse=True)
+    apply_rain_deferral(tasks, weather)
+    tasks.sort(key=effective_days_overdue, reverse=True)
     per_person = {}
     for task in tasks:
         label = task.assignee.name if task.assignee else "Unassigned"
@@ -60,6 +66,8 @@ def overview(request):
             "assignee_name": task.assignee.name if task.assignee else None,
             "days_overdue": task.days_overdue,
             "status": task.status,
+            "rain_deferred": bool(getattr(task, "rain_deferred", False)),
+            "weather_note": getattr(task, "weather_note", None),
         }
         for task in tasks[:5]
     ]
@@ -106,9 +114,10 @@ def overview(request):
     return Response(
         {
             "tasks": {
-                "overdue": sum(1 for t in tasks if t.days_overdue > 0),
-                "due_today": sum(1 for t in tasks if t.days_overdue == 0),
-                "upcoming": sum(1 for t in tasks if t.days_overdue < 0),
+                # A rain-deferred watering job counts as upcoming, not due.
+                "overdue": sum(1 for t in tasks if effective_status(t) == "overdue"),
+                "due_today": sum(1 for t in tasks if effective_status(t) == "due_today"),
+                "upcoming": sum(1 for t in tasks if effective_status(t) == "upcoming"),
                 "per_person": per_person,
                 "top": top,
             },
@@ -116,6 +125,7 @@ def overview(request):
             "crops": {"growing": len(growing), "next_harvest": next_harvest},
             "eggs": {"today": eggs_today, "this_week": eggs_week},
             "activity": activity,
+            "weather": {**weather, "frost_warning": frost_warning(weather)} if weather else None,
         }
     )
 
@@ -157,9 +167,11 @@ class CareTaskViewSet(viewsets.ModelViewSet):
         elif assignee:
             queryset = queryset.filter(assignee_id=assignee)
         tasks = list(queryset)
-        tasks.sort(key=lambda task: task.days_overdue, reverse=True)
+        # Rain takes care of due watering jobs: flag and rank them as upcoming.
+        apply_rain_deferral(tasks, get_weather())
+        tasks.sort(key=effective_days_overdue, reverse=True)
         if request.query_params.get("include") == "due":
-            tasks = [task for task in tasks if task.days_overdue >= 0]
+            tasks = [task for task in tasks if effective_days_overdue(task) >= 0]
         serializer = self.get_serializer(tasks, many=True)
         return Response(serializer.data)
 

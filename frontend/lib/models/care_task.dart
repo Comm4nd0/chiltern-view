@@ -15,6 +15,8 @@ class CareTask {
   final DateTime nextDue;
   final int daysOverdue; // >0 overdue, 0 due today, <0 upcoming
   final String status; // overdue | due_today | upcoming
+  final bool rainDeferred; // rain covers this watering job for today
+  final String? weatherNote;
 
   CareTask({
     required this.id,
@@ -31,6 +33,8 @@ class CareTask {
     required this.nextDue,
     required this.daysOverdue,
     required this.status,
+    this.rainDeferred = false,
+    this.weatherNote,
   });
 
   factory CareTask.fromJson(Map<String, dynamic> json) => CareTask(
@@ -48,6 +52,8 @@ class CareTask {
         nextDue: asDate(json['next_due']),
         daysOverdue: json['days_overdue'] as int? ?? 0,
         status: json['status'] as String? ?? 'upcoming',
+        rainDeferred: json['rain_deferred'] as bool? ?? false,
+        weatherNote: json['weather_note'] as String?,
       );
 
   bool get isOverdue => status == 'overdue';

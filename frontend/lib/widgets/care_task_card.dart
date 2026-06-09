@@ -99,6 +99,38 @@ class CareTaskCard extends StatelessWidget {
                             task.dueLabel,
                             style: TextStyle(color: color, fontWeight: FontWeight.w600),
                           ),
+                          if (task.rainDeferred) ...[
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF5AC8FA).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(PhosphorIcons.cloudRain(PhosphorIconsStyle.fill),
+                                        size: 12, color: const Color(0xFF0A84FF)),
+                                    const SizedBox(width: 4),
+                                    Flexible(
+                                      child: Text(
+                                        task.weatherNote ?? 'rain — deferred',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFF0A84FF),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                           const Spacer(),
                           Text(
                             DateFormat('d MMM').format(task.nextDue),

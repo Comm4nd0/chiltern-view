@@ -29,6 +29,9 @@ class CareTaskSerializer(serializers.ModelSerializer):
     next_due = serializers.DateField(read_only=True)
     days_overdue = serializers.IntegerField(read_only=True)
     status = serializers.CharField(read_only=True)
+    # Request-scoped weather flags set by tracker/watering.py (absent → defaults).
+    rain_deferred = serializers.SerializerMethodField()
+    weather_note = serializers.SerializerMethodField()
 
     class Meta:
         model = CareTask
@@ -37,9 +40,16 @@ class CareTaskSerializer(serializers.ModelSerializer):
             "assignee", "assignee_name",
             "recurrence_interval_days", "last_completed", "due_date", "auto_key", "active",
             "next_due", "days_overdue", "status",
+            "rain_deferred", "weather_note",
             "created_at", "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at", "auto_key"]
+
+    def get_rain_deferred(self, obj):
+        return bool(getattr(obj, "rain_deferred", False))
+
+    def get_weather_note(self, obj):
+        return getattr(obj, "weather_note", None)
 
 
 class LogEntrySerializer(serializers.ModelSerializer):

@@ -145,3 +145,10 @@ CSRF_TRUSTED_ORIGINS = env_list("CSRF_TRUSTED_ORIGINS", "")
 WEATHER_LATITUDE = float(os.environ.get("WEATHER_LATITUDE", "51.557"))
 WEATHER_LONGITUDE = float(os.environ.get("WEATHER_LONGITUDE", "-0.812"))
 WEATHER_LOCATION_NAME = os.environ.get("WEATHER_LOCATION_NAME", "Medmenham, Buckinghamshire")
+# How long a fetched forecast stays fresh before re-fetching on demand.
+WEATHER_CACHE_MINUTES = int(os.environ.get("WEATHER_CACHE_MINUTES", "30"))
+# Rain (mm, fallen in the last 2 days or confidently forecast today) at or above
+# which crop-watering reminders are deferred for the day.
+WATERING_RAIN_THRESHOLD_MM = float(os.environ.get("WATERING_RAIN_THRESHOLD_MM", "5"))
+# Overnight minimum (°C) below which the dashboard warns about tender crops.
+FROST_TEMP_C = float(os.environ.get("FROST_TEMP_C", "2"))
