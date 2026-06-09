@@ -116,6 +116,10 @@ a Mac with Xcode:
   via **TestFlight** (the practical option for two phones).
 
 The local notifications need no paid account — only the install method does.
+Step-by-step TestFlight setup with a one-command fastlane release is in
+**[docs/IOS_TESTFLIGHT.md](docs/IOS_TESTFLIGHT.md)**. The iOS `Info.plist` already
+permits the app's plain-HTTP calls to Luma001 over the local network
+(`NSAllowsLocalNetworking`).
 
 ## Verification status
 

@@ -30,3 +30,12 @@ frontend/.flutter-plugins-dependencies
 .vscode/
 .DS_Store
 Thumbs.db
+
+# --- iOS signing / fastlane secrets ---
+*.p8
+*.p12
+*.mobileprovision
+frontend/ios/.env
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/test_output/
