@@ -95,9 +95,18 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _AddAnimalSheet(api: _api),
+      builder: (_) => _AnimalSheet(api: _api),
     );
     if (created == true) _refresh();
+  }
+
+  Future<void> _editAnimal(Animal animal) async {
+    final changed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _AnimalSheet(api: _api, animal: animal),
+    );
+    if (changed == true) _refresh();
   }
 
   Future<void> _confirmDelete(Animal animal) async {
@@ -221,7 +230,12 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
             child: Center(child: Text('None of these left.')),
           )
         else
-          for (final a in group.animals) _AnimalRow(animal: a, onDelete: () => _confirmDelete(a)),
+          for (final a in group.animals)
+            _AnimalRow(
+              animal: a,
+              onEdit: () => _editAnimal(a),
+              onDelete: () => _confirmDelete(a),
+            ),
       ],
     );
   }
@@ -229,8 +243,9 @@ class _AnimalsScreenState extends State<AnimalsScreen> {
 
 class _AnimalRow extends StatelessWidget {
   final Animal animal;
+  final VoidCallback onEdit;
   final VoidCallback onDelete;
-  const _AnimalRow({required this.animal, required this.onDelete});
+  const _AnimalRow({required this.animal, required this.onEdit, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
@@ -245,12 +260,15 @@ class _AnimalRow extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(animal.name, style: theme.textTheme.titleMedium),
-                  Text(facts.isEmpty ? '—' : facts, style: theme.textTheme.bodySmall),
-                ],
+              child: InkWell(
+                onTap: onEdit,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(animal.name, style: theme.textTheme.titleMedium),
+                    Text(facts.isEmpty ? '—' : facts, style: theme.textTheme.bodySmall),
+                  ],
+                ),
               ),
             ),
             Chip(
@@ -272,20 +290,36 @@ class _AnimalRow extends StatelessWidget {
   }
 }
 
-class _AddAnimalSheet extends StatefulWidget {
+class _AnimalSheet extends StatefulWidget {
   final ApiClient api;
-  const _AddAnimalSheet({required this.api});
+  final Animal? animal;
+  const _AnimalSheet({required this.api, this.animal});
 
   @override
-  State<_AddAnimalSheet> createState() => _AddAnimalSheetState();
+  State<_AnimalSheet> createState() => _AnimalSheetState();
 }
 
-class _AddAnimalSheetState extends State<_AddAnimalSheet> {
+class _AnimalSheetState extends State<_AnimalSheet> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _breed = TextEditingController();
   String _species = 'chicken';
+  bool _active = true;
   bool _saving = false;
+
+  bool get _editing => widget.animal != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final a = widget.animal;
+    if (a != null) {
+      _name.text = a.name;
+      _breed.text = a.breed;
+      _species = a.species;
+      _active = a.active;
+    }
+  }
 
   @override
   void dispose() {
@@ -298,11 +332,21 @@ class _AddAnimalSheetState extends State<_AddAnimalSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      await widget.api.createAnimal(
-        name: _name.text.trim(),
-        species: _species,
-        breed: _breed.text.trim(),
-      );
+      if (_editing) {
+        await widget.api.updateAnimal(
+          widget.animal!.id,
+          name: _name.text.trim(),
+          species: _species,
+          breed: _breed.text.trim(),
+          active: _active,
+        );
+      } else {
+        await widget.api.createAnimal(
+          name: _name.text.trim(),
+          species: _species,
+          breed: _breed.text.trim(),
+        );
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
@@ -323,7 +367,8 @@ class _AddAnimalSheetState extends State<_AddAnimalSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('New animal', style: Theme.of(context).textTheme.titleLarge),
+            Text(_editing ? 'Edit animal' : 'New animal',
+                style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 12),
             TextFormField(
               controller: _name,
@@ -348,6 +393,13 @@ class _AddAnimalSheetState extends State<_AddAnimalSheet> {
                 border: OutlineInputBorder(),
               ),
             ),
+            if (_editing)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(_active ? 'Active' : 'Retired'),
+                value: _active,
+                onChanged: (v) => setState(() => _active = v),
+              ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -362,7 +414,7 @@ class _AddAnimalSheetState extends State<_AddAnimalSheet> {
                   child: _saving
                       ? const SizedBox(
                           width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Add'),
+                      : Text(_editing ? 'Save' : 'Add'),
                 ),
               ],
             ),

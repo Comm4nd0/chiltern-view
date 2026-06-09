@@ -38,6 +38,23 @@ export function useCreateAnimal() {
   })
 }
 
+export function useUpdateAnimal() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: number
+      patch: { name?: string; species?: string; breed?: string; active?: boolean }
+    }) => api.updateAnimal(id, patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.animals })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
 export function useDeleteAnimal() {
   const qc = useQueryClient()
   return useMutation({

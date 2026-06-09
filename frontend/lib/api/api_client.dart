@@ -236,6 +236,27 @@ class ApiClient {
     return Animal.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  Future<Animal> updateAnimal(
+    int id, {
+    required String name,
+    required String species,
+    String breed = '',
+    bool? active,
+  }) async {
+    final res = await _client.patch(
+      _uri('/animals/$id/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'name': name,
+        'species': species,
+        'breed': breed,
+        if (active != null) 'active': active,
+      }),
+    );
+    _check(res);
+    return Animal.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   Future<void> deleteAnimal(int id) async {
     final res = await _client.delete(_uri('/animals/$id/'), headers: _headers());
     _check(res);

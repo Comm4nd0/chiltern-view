@@ -102,6 +102,10 @@ export const api = {
   animals: () => request<unknown>('/animals/?ordering=name').then(decodeList<Animal>),
   createAnimal: (input: { name: string; species: string; breed?: string }) =>
     request<Animal>('/animals/', { method: 'POST', body: JSON.stringify(input) }),
+  updateAnimal: (
+    id: number,
+    patch: { name?: string; species?: string; breed?: string; active?: boolean },
+  ) => request<Animal>(`/animals/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteAnimal: (id: number) => request<void>(`/animals/${id}/`, { method: 'DELETE' }),
 
   crops: (show = 'growing') =>

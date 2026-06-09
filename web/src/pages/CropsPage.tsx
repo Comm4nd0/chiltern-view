@@ -30,7 +30,12 @@ export default function CropsPage() {
 
       <Fab
         color="primary"
-        sx={{ position: 'fixed', bottom: 24, right: 24 }}
+        sx={{
+          position: 'fixed',
+          bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+          right: 24,
+          zIndex: (t) => t.zIndex.appBar + 1,
+        }}
         onClick={() => setOpen(true)}
         aria-label="Add crop"
       >

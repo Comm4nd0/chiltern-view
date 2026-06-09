@@ -11,16 +11,18 @@ import {
   DialogContent,
   DialogTitle,
   Fab,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
-import { useAnimals, useCreateAnimal, useDeleteAnimal } from '../api/hooks'
+import { useAnimals, useCreateAnimal, useDeleteAnimal, useUpdateAnimal } from '../api/hooks'
 import type { Animal } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
 
@@ -92,12 +94,25 @@ function ageLabel(dob: string | null): string | null {
   return `${years} yr ${rem} mo`
 }
 
-function AnimalRow({ animal, onDelete }: { animal: Animal; onDelete: (a: Animal) => void }) {
+function AnimalRow({
+  animal,
+  onEdit,
+  onDelete,
+}: {
+  animal: Animal
+  onEdit: (a: Animal) => void
+  onDelete: (a: Animal) => void
+}) {
   const facts = [ageLabel(animal.date_of_birth), animal.breed].filter(Boolean).join(' · ')
   return (
     <Card sx={{ mb: 1 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1.5 }}>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Box
+          sx={{ flex: 1, minWidth: 0, cursor: 'pointer' }}
+          onClick={() => onEdit(animal)}
+          role="button"
+          aria-label={`Edit ${animal.name}`}
+        >
           <Typography noWrap>{animal.name}</Typography>
           <Typography variant="caption" color="text.secondary">
             {facts || '—'}
@@ -117,12 +132,17 @@ function AnimalRow({ animal, onDelete }: { animal: Animal; onDelete: (a: Animal)
   )
 }
 
-function AddAnimalDialog({ onClose }: { onClose: () => void }) {
+function AnimalDialog({ animal, onClose }: { animal?: Animal; onClose: () => void }) {
+  const editing = animal != null
   const create = useCreateAnimal()
-  const [name, setName] = useState('')
-  const [species, setSpecies] = useState('chicken')
-  const [breed, setBreed] = useState('')
+  const update = useUpdateAnimal()
+  const [name, setName] = useState(animal?.name ?? '')
+  const [species, setSpecies] = useState(animal?.species ?? 'chicken')
+  const [breed, setBreed] = useState(animal?.breed ?? '')
+  const [active, setActive] = useState(animal?.active ?? true)
   const [error, setError] = useState<string | null>(null)
+
+  const busy = create.isPending || update.isPending
 
   const save = async () => {
     if (!name.trim()) {
@@ -130,7 +150,14 @@ function AddAnimalDialog({ onClose }: { onClose: () => void }) {
       return
     }
     try {
-      await create.mutateAsync({ name: name.trim(), species, breed: breed.trim() })
+      if (editing) {
+        await update.mutateAsync({
+          id: animal.id,
+          patch: { name: name.trim(), species, breed: breed.trim(), active },
+        })
+      } else {
+        await create.mutateAsync({ name: name.trim(), species, breed: breed.trim() })
+      }
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.')
@@ -139,7 +166,7 @@ function AddAnimalDialog({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>New animal</DialogTitle>
+      <DialogTitle>{editing ? 'Edit animal' : 'New animal'}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
@@ -162,6 +189,12 @@ function AddAnimalDialog({ onClose }: { onClose: () => void }) {
             ))}
           </TextField>
           <TextField label="Breed (optional)" value={breed} onChange={(e) => setBreed(e.target.value)} />
+          {editing && (
+            <FormControlLabel
+              control={<Switch checked={active} onChange={(e) => setActive(e.target.checked)} />}
+              label={active ? 'Active' : 'Retired'}
+            />
+          )}
           {error && (
             <Typography color="error" variant="body2">
               {error}
@@ -171,8 +204,8 @@ function AddAnimalDialog({ onClose }: { onClose: () => void }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button variant="contained" onClick={save} disabled={create.isPending}>
-          Add
+        <Button variant="contained" onClick={save} disabled={busy}>
+          {editing ? 'Save' : 'Add'}
         </Button>
       </DialogActions>
     </Dialog>
@@ -184,6 +217,7 @@ export default function AnimalsPage() {
   const del = useDeleteAnimal()
   const [selected, setSelected] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editing, setEditing] = useState<Animal | null>(null)
 
   const confirmDelete = (a: Animal) => {
     if (window.confirm(`Remove ${a.name}? Their tasks stay but become unassigned.`)) {
@@ -249,7 +283,7 @@ export default function AnimalsPage() {
                 <Typography color="text.secondary">None of these left.</Typography>
               ) : (
                 group.animals.map((a) => (
-                  <AnimalRow key={a.id} animal={a} onDelete={confirmDelete} />
+                  <AnimalRow key={a.id} animal={a} onEdit={setEditing} onDelete={confirmDelete} />
                 ))
               )}
             </Stack>
@@ -259,13 +293,26 @@ export default function AnimalsPage() {
 
       <Fab
         color="primary"
-        sx={{ position: 'fixed', bottom: 24, right: 24 }}
+        sx={{
+          position: 'fixed',
+          bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))',
+          right: 24,
+          zIndex: (t) => t.zIndex.appBar + 1,
+        }}
         onClick={() => setDialogOpen(true)}
         aria-label="Add animal"
       >
         <AddIcon />
       </Fab>
-      {dialogOpen && <AddAnimalDialog onClose={() => setDialogOpen(false)} />}
+      {(dialogOpen || editing) && (
+        <AnimalDialog
+          animal={editing ?? undefined}
+          onClose={() => {
+            setDialogOpen(false)
+            setEditing(null)
+          }}
+        />
+      )}
     </Box>
   )
 }
