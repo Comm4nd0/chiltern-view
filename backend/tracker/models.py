@@ -241,6 +241,26 @@ class EggRecord(models.Model):
         return f"{self.date}: {self.count} eggs{label}"
 
 
+class PushSubscription(models.Model):
+    """A browser registered for web-push task reminders (see ``tracker/push.py``).
+
+    ``last_sent_date`` is the dedup stamp: the reminder job sends at most one
+    batch per subscription per day, however often the scheduler runs it.
+    """
+
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.CASCADE, related_name="push_subscriptions"
+    )
+    endpoint = models.URLField(max_length=500, unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_sent_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} @ {self.endpoint[:40]}…"
+
+
 class WeatherSnapshot(models.Model):
     """The most recently fetched Open-Meteo forecast.
 

@@ -152,3 +152,14 @@ WEATHER_CACHE_MINUTES = int(os.environ.get("WEATHER_CACHE_MINUTES", "30"))
 WATERING_RAIN_THRESHOLD_MM = float(os.environ.get("WATERING_RAIN_THRESHOLD_MM", "5"))
 # Overnight minimum (°C) below which the dashboard warns about tender crops.
 FROST_TEMP_C = float(os.environ.get("FROST_TEMP_C", "2"))
+
+# --- Web push reminders (VAPID) ----------------------------------------------
+# The browser equivalent of the phone app's on-device reminders. Generate a
+# keypair once (npx web-push generate-vapid-keys) and set these in the server's
+# .env; leave them empty to disable web push.
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "admin@example.com")
+# Local hour (Europe/London) after which the daily reminder push goes out —
+# mirrors the phone app's default 8am digest.
+PUSH_REMINDER_HOUR = int(os.environ.get("PUSH_REMINDER_HOUR", "8"))

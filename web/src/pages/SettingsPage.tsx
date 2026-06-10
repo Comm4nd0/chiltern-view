@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Button,
+  CircularProgress,
   Divider,
+  FormControlLabel,
   IconButton,
   List,
   ListItem,
   ListItemText,
   Stack,
+  Switch,
   TextField,
   Typography,
 } from '@mui/material'
@@ -22,6 +25,72 @@ import { clearAuth, useAuth } from '../api/auth'
 import { api } from '../api/client'
 import { queryClient } from '../queryClient'
 import QueryBoundary from '../components/QueryBoundary'
+import { disablePush, enablePush, getPushState, type PushState } from '../push'
+
+/** The browser-reminders toggle: the web counterpart of the phone app's
+ * on-device notifications (a morning digest + due-today pings). */
+function ReminderSettings() {
+  const [state, setState] = useState<PushState | 'loading'>('loading')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void getPushState().then(setState)
+  }, [])
+
+  const toggle = async (on: boolean) => {
+    setBusy(true)
+    setError(null)
+    try {
+      if (on) await enablePush()
+      else await disablePush()
+      setState(await getPushState())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not change reminders.')
+      setState(await getPushState())
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (state === 'loading') return <CircularProgress size={20} />
+  if (state === 'unsupported') {
+    return (
+      <Alert severity="info">
+        This browser doesn't support push notifications. The phone app delivers reminders
+        on-device, and the dashboard always shows what's due.
+      </Alert>
+    )
+  }
+  if (state === 'denied') {
+    return (
+      <Alert severity="warning">
+        Notifications are blocked for this site. Allow them in the browser's site settings,
+        then come back and switch reminders on.
+      </Alert>
+    )
+  }
+  return (
+    <Stack spacing={1}>
+      <FormControlLabel
+        control={
+          <Switch checked={state === 'on'} disabled={busy} onChange={(e) => toggle(e.target.checked)} />
+        }
+        label="Browser reminders"
+      />
+      <Typography variant="body2" color="text.secondary">
+        A morning summary of what's due, plus a nudge for tasks due that day — the same
+        reminders the phone app sends. On iPhone, add this site to the Home Screen first
+        (Share → Add to Home Screen).
+      </Typography>
+      {error && (
+        <Typography color="error" variant="body2">
+          {error}
+        </Typography>
+      )}
+    </Stack>
+  )
+}
 
 export default function SettingsPage() {
   const people = usePeople()
@@ -32,6 +101,9 @@ export default function SettingsPage() {
   const [name, setName] = useState('')
 
   const signOut = async () => {
+    // This browser's reminders belong to whoever is signed in — drop the
+    // subscription so the next person doesn't inherit them.
+    await disablePush().catch(() => {})
     try {
       await api.logout()
     } catch {
@@ -126,10 +198,7 @@ export default function SettingsPage() {
 
       <Divider />
       <Typography variant="h6">Reminders</Typography>
-      <Alert severity="info">
-        Task reminders are delivered by the phone app as on-device notifications. The web app
-        shows what&apos;s due on the dashboard; browser push reminders aren&apos;t set up yet.
-      </Alert>
+      <ReminderSettings />
 
       <Divider />
       <Typography variant="h6">Server</Typography>

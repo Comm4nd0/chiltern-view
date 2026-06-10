@@ -7,3 +7,4 @@ dj-database-url~=2.2
 gunicorn~=23.0
 whitenoise~=6.7
 requests~=2.32
+pywebpush~=2.0

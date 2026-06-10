@@ -48,8 +48,14 @@ ship a feature to only one platform.
 - Before considering any user-facing change done, implement and verify it on
   **both**: web (`cd web && npm run build && npm run lint`) and mobile
   (`cd frontend && flutter analyze && flutter test`).
-- Current known gap to close: **reminders** exist on mobile (on-device
-  notifications) but not yet on web (would need browser Web Push).
+- Reminders exist on **both** platforms: mobile schedules on-device
+  notifications (`frontend/lib/services/notification_service.dart`); web uses
+  browser Web Push — a `PushSubscription` model, `/api/push/*` endpoints, a
+  service worker (`web/public/sw.js`), and the `send_push_reminders` management
+  command run by the compose `scheduler` service. Web push needs `VAPID_*` env
+  vars on the server (generate once with `npx web-push generate-vapid-keys`;
+  see `.env.example`); it is silently disabled when they're unset. Keep the
+  digest wording identical on both platforms.
 
 ## Layout
 - `backend/` — Django + DRF API (models, serializers, viewsets). Dockerised.

@@ -157,6 +157,13 @@ export const api = {
     request<LogEntry>(`/log-entries/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteLogEntry: (id: number) => request<void>(`/log-entries/${id}/`, { method: 'DELETE' }),
 
+  // Web push (browser reminders).
+  vapidPublicKey: () => request<{ key: string }>('/push/vapid-public-key/'),
+  pushSubscribe: (sub: PushSubscriptionJSON) =>
+    request<{ ok: boolean }>('/push/subscribe/', { method: 'POST', body: JSON.stringify(sub) }),
+  pushUnsubscribe: (endpoint: string) =>
+    request<void>('/push/unsubscribe/', { method: 'POST', body: JSON.stringify({ endpoint }) }),
+
   eggSummary: () => request<EggSummary>('/egg-records/summary/'),
   recentEggs: () => request<unknown>('/egg-records/?ordering=-date').then(decodeList<EggRecord>),
   incrementEggs: (count = 1, source?: string) =>
