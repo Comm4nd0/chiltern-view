@@ -3,9 +3,13 @@ import 'package:intl/intl.dart';
 
 import '../api/api_client.dart';
 import '../models/animal.dart';
+import '../models/care_task.dart';
 import '../models/log_entry.dart';
+import '../services/notification_service.dart';
 import '../util/animal_display.dart';
 import '../widgets/animal_sheet.dart';
+import '../widgets/care_task_card.dart';
+import '../widgets/task_sheet.dart';
 
 /// The note types a person writes by hand (task_completed entries are system-made).
 const List<List<String>> noteTypes = [
@@ -58,11 +62,15 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
   bool _hasMore = false;
   int _page = 1;
   String _filter = 'notes';
+  List<CareTask> _tasks = [];
+  bool _tasksLoading = true;
+  String? _tasksError;
 
   @override
   void initState() {
     super.initState();
     _loadAnimal();
+    _loadTasks();
     _loadLog(reset: true);
   }
 
@@ -72,6 +80,52 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
       if (mounted) setState(() => _animal = animal);
     } catch (e) {
       if (mounted) setState(() => _animalError = '$e');
+    }
+  }
+
+  Future<void> _loadTasks() async {
+    try {
+      final tasks = await _api.dashboard(animal: widget.animalId);
+      if (!mounted) return;
+      setState(() {
+        _tasks = tasks;
+        _tasksLoading = false;
+        _tasksError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _tasksError = '$e';
+        _tasksLoading = false;
+      });
+    }
+  }
+
+  Future<void> _completeTask(CareTask task) async {
+    try {
+      await _api.completeTask(task.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Marked "${task.name}" done')),
+      );
+      _loadTasks();
+      _loadLog(reset: true); // completion lands in the journal too
+      syncReminders(_api); // due date moved — refresh scheduled reminders
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
+  Future<void> _addOrEditTask([CareTask? task]) async {
+    final changed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => TaskSheet(api: _api, task: task, defaultAnimalId: widget.animalId),
+    );
+    if (changed == true) {
+      _loadTasks();
+      syncReminders(_api); // new/changed task may need a reminder
     }
   }
 
@@ -141,6 +195,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           await _loadAnimal();
+          await _loadTasks();
           await _loadLog(reset: true);
         },
         child: ListView(
@@ -148,6 +203,7 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             _header(context),
+            _taskSection(context),
             _journal(context),
             const SizedBox(height: 80), // room for the FAB
           ],
@@ -200,6 +256,65 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
                   : theme.colorScheme.surfaceContainerHighest,
             ),
             TextButton(onPressed: _editAnimal, child: const Text('Edit')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _taskSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('Tasks', style: theme.textTheme.titleLarge)),
+                FilledButton.tonalIcon(
+                  onPressed: () => _addOrEditTask(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Add task'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_tasksLoading)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(
+                    child: SizedBox(
+                        width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+              )
+            else if (_tasksError != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('Could not load the tasks: $_tasksError')),
+                    TextButton(onPressed: _loadTasks, child: const Text('Retry')),
+                  ],
+                ),
+              )
+            else if (_tasks.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: Text(
+                    'No tasks for ${_animal?.name ?? 'this animal'} yet — add the first one.',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              )
+            else
+              for (final task in _tasks)
+                CareTaskCard(
+                  task: task,
+                  onComplete: () => _completeTask(task),
+                  onEdit: () => _addOrEditTask(task),
+                ),
           ],
         ),
       ),

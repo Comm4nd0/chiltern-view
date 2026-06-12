@@ -54,6 +54,7 @@ function decodeList<T>(data: unknown): T[] {
 export interface CreateTaskInput {
   name: string
   recurrence_interval_days?: number
+  times_per_day?: number
   due_date?: string | null
   description?: string
   animal?: number | null
@@ -101,6 +102,9 @@ export const api = {
     request<unknown>(
       `/care-tasks/dashboard/${assignee ? `?assignee=${encodeURIComponent(assignee)}` : ''}`,
     ).then(decodeList<CareTask>),
+  // One animal's tasks, including its species' shared routine (flock jobs).
+  animalTasks: (animalId: number) =>
+    request<unknown>(`/care-tasks/dashboard/?animal=${animalId}`).then(decodeList<CareTask>),
   completeTask: (id: number, note?: string) =>
     request<CareTask>(`/care-tasks/${id}/complete/`, {
       method: 'POST',

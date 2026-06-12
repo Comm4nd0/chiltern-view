@@ -22,12 +22,15 @@ import {
 import { useMyPersonId } from '../config'
 import type { CareTask } from '../api/types'
 
-/** Create a new care task, or edit/delete an existing one when `task` is given. */
+/** Create a new care task, or edit/delete an existing one when `task` is given.
+ * `defaultAnimal` pre-selects the animal when adding from an animal's page. */
 export default function AddTaskDialog({
   task,
+  defaultAnimal,
   onClose,
 }: {
   task?: CareTask
+  defaultAnimal?: number
   onClose: () => void
 }) {
   const editing = task != null
@@ -40,12 +43,15 @@ export default function AddTaskDialog({
 
   const [name, setName] = useState(task?.name ?? '')
   const [days, setDays] = useState(String(task?.recurrence_interval_days ?? 7))
+  const [timesPerDay, setTimesPerDay] = useState(String(task?.times_per_day ?? 1))
   const [repeats, setRepeats] = useState(task ? task.due_date == null : true)
   const [dueDate, setDueDate] = useState(task?.due_date ?? new Date().toISOString().slice(0, 10))
   const [assignee, setAssignee] = useState(
     task?.assignee != null ? String(task.assignee) : myId != null ? String(myId) : '',
   )
-  const [animal, setAnimal] = useState(task?.animal != null ? String(task.animal) : '')
+  const [animal, setAnimal] = useState(
+    task?.animal != null ? String(task.animal) : defaultAnimal != null ? String(defaultAnimal) : '',
+  )
   const [error, setError] = useState<string | null>(null)
 
   const busy = createTask.isPending || updateTask.isPending || deleteTask.isPending
@@ -67,13 +73,18 @@ export default function AddTaskDialog({
         setError('Enter a positive interval.')
         return
       }
-      payload = { ...base, recurrence_interval_days: n, due_date: null }
+      const times = Number(timesPerDay)
+      if (!Number.isInteger(times) || times <= 0) {
+        setError('Times a day must be a positive number.')
+        return
+      }
+      payload = { ...base, recurrence_interval_days: n, times_per_day: times, due_date: null }
     } else {
       if (!dueDate) {
         setError('Pick a due date.')
         return
       }
-      payload = { ...base, due_date: dueDate }
+      payload = { ...base, due_date: dueDate, times_per_day: 1 }
     }
     try {
       if (editing) await updateTask.mutateAsync({ id: task.id, patch: payload })
@@ -120,12 +131,23 @@ export default function AddTaskDialog({
             <ToggleButton value="oneoff">One-off</ToggleButton>
           </ToggleButtonGroup>
           {repeats ? (
-            <TextField
-              label="Repeat every (days)"
-              type="number"
-              value={days}
-              onChange={(e) => setDays(e.target.value)}
-            />
+            <Stack direction="row" spacing={2}>
+              <TextField
+                label="Repeat every (days)"
+                type="number"
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                fullWidth
+              />
+              <TextField
+                label="Times a day"
+                type="number"
+                value={timesPerDay}
+                onChange={(e) => setTimesPerDay(e.target.value)}
+                helperText="e.g. 4 feeds a day"
+                fullWidth
+              />
+            </Stack>
           ) : (
             <TextField
               label="Due date"

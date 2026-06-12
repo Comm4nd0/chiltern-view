@@ -9,6 +9,8 @@ class CareTask {
   final int? assignee;
   final String? assigneeName;
   final int recurrenceIntervalDays;
+  final int timesPerDay; // how many times the task needs doing on its due day
+  final int timesDoneToday; // completions recorded so far today
   final DateTime? lastCompleted;
   final DateTime? dueDate; // set => one-off task (doesn't repeat)
   final bool active;
@@ -27,6 +29,8 @@ class CareTask {
     required this.assignee,
     required this.assigneeName,
     required this.recurrenceIntervalDays,
+    this.timesPerDay = 1,
+    this.timesDoneToday = 0,
     required this.lastCompleted,
     this.dueDate,
     required this.active,
@@ -46,6 +50,8 @@ class CareTask {
         assignee: json['assignee'] as int?,
         assigneeName: json['assignee_name'] as String?,
         recurrenceIntervalDays: json['recurrence_interval_days'] as int? ?? 0,
+        timesPerDay: json['times_per_day'] as int? ?? 1,
+        timesDoneToday: json['times_done_today'] as int? ?? 0,
         lastCompleted: asNullableDate(json['last_completed']),
         dueDate: asNullableDate(json['due_date']),
         active: json['active'] as bool? ?? true,
@@ -63,11 +69,27 @@ class CareTask {
 
   /// Human-friendly urgency label for the dashboard.
   String get dueLabel {
-    if (status == 'due_today') return 'Due today';
+    if (status == 'due_today') {
+      if (timesPerDay > 1 && timesDoneToday > 0) {
+        return 'Due today ($timesDoneToday of $timesPerDay done)';
+      }
+      return 'Due today';
+    }
     if (daysOverdue > 0) {
       return '$daysOverdue day${daysOverdue == 1 ? '' : 's'} overdue';
     }
     final inDays = -daysOverdue;
     return 'Due in $inDays day${inDays == 1 ? '' : 's'}';
+  }
+
+  /// "one-off", "daily", "4× a day", "every 3 days" — matches the web wording.
+  String get recurrenceLabel {
+    if (isOneOff) return 'one-off';
+    if (timesPerDay > 1) {
+      final times = '$timesPerDay× a day';
+      return recurrenceIntervalDays == 1 ? times : 'every $recurrenceIntervalDays days, $times';
+    }
+    if (recurrenceIntervalDays == 1) return 'daily';
+    return 'every $recurrenceIntervalDays days';
   }
 }

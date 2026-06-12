@@ -4,6 +4,8 @@ import type { HarvestCropInput, LogEntryInput, UpdateCropInput, UpdateTaskInput 
 
 export const keys = {
   dashboard: (assignee?: string) => ['dashboard', assignee ?? 'all'] as const,
+  // Under the 'dashboard' prefix so task mutations invalidate animal task lists too.
+  animalTasks: (animalId: number) => ['dashboard', 'animal', animalId] as const,
   people: ['people'] as const,
   animals: ['animals'] as const,
   crops: (show: string) => ['crops', show] as const,
@@ -17,6 +19,13 @@ export function useOverview() {
 
 export function useDashboard(assignee?: string) {
   return useQuery({ queryKey: keys.dashboard(assignee), queryFn: () => api.dashboard(assignee) })
+}
+
+export function useAnimalTasks(animalId: number) {
+  return useQuery({
+    queryKey: keys.animalTasks(animalId),
+    queryFn: () => api.animalTasks(animalId),
+  })
 }
 
 export function usePeople() {

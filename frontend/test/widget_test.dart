@@ -36,6 +36,34 @@ void main() {
     test('labels an upcoming task', () {
       expect(fromDaysOverdue(-5, 'upcoming').dueLabel, 'Due in 5 days');
     });
+
+    CareTask feedTask({int times = 1, int done = 0, int everyDays = 1, String? dueDate}) =>
+        CareTask.fromJson({
+          'id': 2,
+          'name': 'Feed the dog',
+          'recurrence_interval_days': everyDays,
+          'times_per_day': times,
+          'times_done_today': done,
+          'due_date': dueDate,
+          'next_due': '2026-01-01',
+          'days_overdue': 0,
+          'status': 'due_today',
+        });
+
+    test('labels recurrence, matching the web wording', () {
+      expect(feedTask(everyDays: 1).recurrenceLabel, 'daily');
+      expect(feedTask(everyDays: 3).recurrenceLabel, 'every 3 days');
+      expect(feedTask(times: 4).recurrenceLabel, '4× a day');
+      expect(feedTask(times: 2, everyDays: 3).recurrenceLabel, 'every 3 days, 2× a day');
+      expect(feedTask(dueDate: '2026-01-01').recurrenceLabel, 'one-off');
+    });
+
+    test('shows progress through a several-times-a-day task', () {
+      expect(feedTask(times: 4, done: 0).dueLabel, 'Due today');
+      expect(feedTask(times: 4, done: 2).dueLabel, 'Due today (2 of 4 done)');
+      // Once a day: no counter noise.
+      expect(feedTask(times: 1, done: 1).dueLabel, 'Due today');
+    });
   });
 
   test('EggSummary parses snake_case keys', () {

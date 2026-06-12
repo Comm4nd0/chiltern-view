@@ -1,7 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
-from django.db.models import F, Sum
+from django.db.models import F, Q, Sum
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import status, viewsets
@@ -159,6 +159,8 @@ class CareTaskViewSet(viewsets.ModelViewSet):
         Query params:
           include=all (default) | due   -> 'due' drops tasks not yet due.
           assignee=<id> | unassigned    -> filter by who's responsible.
+          animal=<id>                   -> that animal's tasks, including its
+                                           species' shared routine (flock jobs).
         """
         queryset = self.get_queryset().filter(active=True)
         assignee = request.query_params.get("assignee")
@@ -166,6 +168,18 @@ class CareTaskViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(assignee__isnull=True)
         elif assignee:
             queryset = queryset.filter(assignee_id=assignee)
+        animal_id = request.query_params.get("animal")
+        if animal_id:
+            animal = Animal.objects.filter(pk=animal_id).first() if animal_id.isdigit() else None
+            if animal is None:
+                queryset = queryset.none()
+            else:
+                # Species-routine auto keys are exactly "animal:<species>:<job>";
+                # per-animal keys carry the pk too, so they only match their own FK.
+                queryset = queryset.filter(
+                    Q(animal_id=animal.pk)
+                    | Q(auto_key__regex=rf"^animal:{animal.species}:[^:]+$")
+                )
         tasks = list(queryset)
         # Rain takes care of due watering jobs: flag and rank them as upcoming.
         apply_rain_deferral(tasks, get_weather())

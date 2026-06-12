@@ -10,14 +10,17 @@ import {
   CircularProgress,
   Divider,
   IconButton,
+  Snackbar,
   Stack,
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { useAnimalLog, useAnimals } from '../api/hooks'
-import type { LogEntry } from '../api/types'
+import { useAnimalLog, useAnimalTasks, useAnimals, useCompleteTask } from '../api/hooks'
+import type { CareTask, LogEntry } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
 import AnimalDialog from '../components/AnimalDialog'
+import AddTaskDialog from '../components/AddTaskDialog'
+import CareTaskCard from '../components/CareTaskCard'
 import LogEntryDialog from '../components/LogEntryDialog'
 import { SPECIES_EMOJI, ageLabel } from '../animals'
 import { TYPE_COLORS } from '../journal'
@@ -69,11 +72,29 @@ export default function AnimalDetailPage() {
   const [filter, setFilter] = useState('notes')
   const types = FILTERS.find((f) => f.key === filter)?.types
   const log = useAnimalLog(animalId, types)
+  const tasks = useAnimalTasks(animalId)
+  const complete = useCompleteTask()
   const [addingNote, setAddingNote] = useState(false)
   const [editingNote, setEditingNote] = useState<LogEntry | null>(null)
   const [editingAnimal, setEditingAnimal] = useState(false)
+  const [addingTask, setAddingTask] = useState(false)
+  const [editingTask, setEditingTask] = useState<CareTask | null>(null)
+  const [completingId, setCompletingId] = useState<number | null>(null)
+  const [snack, setSnack] = useState<string | null>(null)
 
   const entries = log.data?.pages.flatMap((p) => p.results) ?? []
+
+  const onComplete = async (task: CareTask) => {
+    setCompletingId(task.id)
+    try {
+      await complete.mutateAsync({ id: task.id })
+      setSnack(`Marked "${task.name}" done`)
+    } catch (e) {
+      setSnack(e instanceof Error ? e.message : 'Failed')
+    } finally {
+      setCompletingId(null)
+    }
+  }
 
   return (
     <QueryBoundary query={animals}>
@@ -125,6 +146,51 @@ export default function AnimalDetailPage() {
                     Edit
                   </Button>
                 </Stack>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Stack direction="row" alignItems="center" sx={{ mb: 1 }}>
+                  <Typography variant="h6" sx={{ flex: 1 }}>
+                    Tasks
+                  </Typography>
+                  <Button size="small" variant="contained" onClick={() => setAddingTask(true)}>
+                    Add task
+                  </Button>
+                </Stack>
+                {tasks.isPending ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                    <CircularProgress size={28} />
+                  </Box>
+                ) : tasks.isError ? (
+                  <Alert
+                    severity="error"
+                    action={
+                      <Button size="small" onClick={() => tasks.refetch()}>
+                        Retry
+                      </Button>
+                    }
+                  >
+                    Couldn't load the tasks.
+                  </Alert>
+                ) : tasks.data.length === 0 ? (
+                  <Typography color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                    No tasks for {animal.name} yet — add the first one.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1}>
+                    {tasks.data.map((t) => (
+                      <CareTaskCard
+                        key={t.id}
+                        task={t}
+                        completing={completingId === t.id}
+                        onComplete={() => onComplete(t)}
+                        onEdit={() => setEditingTask(t)}
+                      />
+                    ))}
+                  </Stack>
+                )}
               </CardContent>
             </Card>
 
@@ -202,6 +268,22 @@ export default function AnimalDetailPage() {
             {editingAnimal && (
               <AnimalDialog animal={animal} onClose={() => setEditingAnimal(false)} />
             )}
+            {(addingTask || editingTask) && (
+              <AddTaskDialog
+                task={editingTask ?? undefined}
+                defaultAnimal={animal.id}
+                onClose={() => {
+                  setAddingTask(false)
+                  setEditingTask(null)
+                }}
+              />
+            )}
+            <Snackbar
+              open={snack != null}
+              autoHideDuration={3000}
+              onClose={() => setSnack(null)}
+              message={snack ?? ''}
+            />
             {(addingNote || editingNote) && (
               <LogEntryDialog
                 animalId={animal.id}

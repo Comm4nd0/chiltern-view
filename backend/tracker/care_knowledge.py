@@ -18,6 +18,7 @@ animal or to tweak a schedule, edit the tables below — nothing else needs to c
 ANIMAL_CARE = {
     "chicken": [
         ("let_out", "Let the hens out & check water", 1),
+        ("eggs", "Check for & collect eggs", 1),
         ("shut_in", "Shut the hens in for the night", 1),
         ("feed", "Top up hen feed & grit", 3),
         ("clean_coop", "Clean out the coop", 7),

@@ -6,12 +6,30 @@ import { fmtDate } from '../format'
 import AssigneeAvatar from './AssigneeAvatar'
 
 function dueLabel(task: CareTask): string {
-  if (task.status === 'due_today') return 'Due today'
+  if (task.status === 'due_today') {
+    if (task.times_per_day > 1 && task.times_done_today > 0) {
+      return `Due today (${task.times_done_today} of ${task.times_per_day} done)`
+    }
+    return 'Due today'
+  }
   if (task.days_overdue > 0) {
     return `${task.days_overdue} day${task.days_overdue === 1 ? '' : 's'} overdue`
   }
   const inDays = -task.days_overdue
   return `Due in ${inDays} day${inDays === 1 ? '' : 's'}`
+}
+
+/** "one-off", "daily", "4× a day", "every 3 days" — matches the mobile wording. */
+function recurrenceLabel(task: CareTask): string {
+  if (task.due_date) return 'one-off'
+  if (task.times_per_day > 1) {
+    const times = `${task.times_per_day}× a day`
+    return task.recurrence_interval_days === 1
+      ? times
+      : `every ${task.recurrence_interval_days} days, ${times}`
+  }
+  if (task.recurrence_interval_days === 1) return 'daily'
+  return `every ${task.recurrence_interval_days} days`
 }
 
 export default function CareTaskCard({
@@ -26,8 +44,7 @@ export default function CareTaskCard({
   onEdit?: () => void
 }) {
   const color = statusColor(task.status)
-  const recurrence = task.due_date ? 'one-off' : `every ${task.recurrence_interval_days} days`
-  const sub = [task.animal_name, recurrence].filter(Boolean).join(' · ')
+  const sub = [task.animal_name, recurrenceLabel(task)].filter(Boolean).join(' · ')
 
   return (
     <Card sx={{ display: 'flex', overflow: 'hidden' }}>

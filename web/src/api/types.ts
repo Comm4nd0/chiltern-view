@@ -29,6 +29,10 @@ export interface CareTask {
   assignee: number | null
   assignee_name: string | null
   recurrence_interval_days: number
+  /** How many times the task needs doing on its due day (1 = once). */
+  times_per_day: number
+  /** Completions recorded so far today. */
+  times_done_today: number
   last_completed: string | null
   due_date: string | null
   active: boolean

@@ -60,7 +60,7 @@ class CareTaskCard extends StatelessWidget {
     final color = AppTheme.statusColor(task.status);
     final subtitle = <String>[
       if (task.animalName != null) task.animalName!,
-      task.isOneOff ? 'one-off' : 'every ${task.recurrenceIntervalDays} days',
+      task.recurrenceLabel,
     ].join(' · ');
 
     return Card(

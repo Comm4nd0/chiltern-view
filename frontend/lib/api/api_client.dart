@@ -117,11 +117,14 @@ class ApiClient {
   }
 
   // --- Care tasks ---------------------------------------------------------
-  Future<List<CareTask>> dashboard({String include = 'all', String? assignee}) async {
+  /// [animal] narrows to one animal's tasks, including its species' shared
+  /// routine (flock jobs), for the animal detail screen.
+  Future<List<CareTask>> dashboard({String include = 'all', String? assignee, int? animal}) async {
     final res = await _client.get(
       _uri('/care-tasks/dashboard/', {
         'include': include,
         if (assignee != null) 'assignee': assignee,
+        if (animal != null) 'animal': animal,
       }),
       headers: _headers(),
     );
@@ -142,6 +145,7 @@ class ApiClient {
   Future<CareTask> createCareTask({
     required String name,
     int recurrenceIntervalDays = 7,
+    int timesPerDay = 1,
     DateTime? dueDate,
     int? animal,
     int? assignee,
@@ -153,6 +157,7 @@ class ApiClient {
       body: jsonEncode({
         'name': name,
         'recurrence_interval_days': recurrenceIntervalDays,
+        'times_per_day': timesPerDay,
         'due_date': dueDate != null ? _ymd(dueDate) : null,
         'description': description,
         if (animal != null) 'animal': animal,
@@ -169,6 +174,7 @@ class ApiClient {
     int id, {
     required String name,
     required int recurrenceIntervalDays,
+    int timesPerDay = 1,
     DateTime? dueDate,
     int? animal,
     int? assignee,
@@ -179,6 +185,7 @@ class ApiClient {
       body: jsonEncode({
         'name': name,
         'recurrence_interval_days': recurrenceIntervalDays,
+        'times_per_day': timesPerDay,
         'due_date': dueDate != null ? _ymd(dueDate) : null, // null clears => repeats
         'animal': animal,
         'assignee': assignee,

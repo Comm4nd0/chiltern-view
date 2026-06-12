@@ -1,6 +1,7 @@
 """Domain models for the Chiltern View smallholding tracker."""
 from datetime import timedelta
 
+from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
@@ -97,6 +98,17 @@ class CareTask(models.Model):
         default=7,
         help_text="How often this task repeats, in days.",
     )
+    times_per_day = models.PositiveIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        help_text="How many times the task needs doing on its due day, "
+        "e.g. 4 for a dog fed four times a day.",
+    )
+    times_done = models.PositiveIntegerField(
+        default=0,
+        help_text="Completions recorded on last_completed — progress through "
+        "a several-times-a-day task.",
+    )
     last_completed = models.DateField(
         null=True,
         blank=True,
@@ -140,9 +152,20 @@ class CareTask(models.Model):
         return timezone.localdate()
 
     @property
+    def times_done_today(self):
+        """Completions so far today — 0 unless the task was last done today."""
+        if self.last_completed == timezone.localdate():
+            return self.times_done
+        return 0
+
+    @property
     def next_due(self):
         if self.due_date:
             return self.due_date
+        # A several-times-a-day task stays due until today's repeats are all done.
+        today = timezone.localdate()
+        if self.times_per_day > 1 and self.last_completed == today and self.times_done < self.times_per_day:
+            return today
         return self.anchor_date + timedelta(days=self.recurrence_interval_days)
 
     @property
@@ -163,19 +186,29 @@ class CareTask(models.Model):
         """Record completion: stamp last_completed and write a log entry.
 
         A recurring task reschedules off the new last_completed; a one-off task is
-        closed out (deactivated) so it drops off the list once done.
+        closed out (deactivated) so it drops off the list once done. A several-
+        times-a-day task counts completions and stays due until the day's quota
+        is met.
         """
-        self.last_completed = on or timezone.localdate()
+        on = on or timezone.localdate()
+        if not self.is_one_off and self.times_per_day > 1 and self.last_completed == on:
+            self.times_done += 1
+        else:
+            self.times_done = 1
+        self.last_completed = on
         if self.is_one_off:
             self.active = False
-            self.save(update_fields=["last_completed", "active", "updated_at"])
+            self.save(update_fields=["last_completed", "times_done", "active", "updated_at"])
         else:
-            self.save(update_fields=["last_completed", "updated_at"])
+            self.save(update_fields=["last_completed", "times_done", "updated_at"])
+        default_note = f"Completed: {self.name}"
+        if self.times_per_day > 1:
+            default_note += f" ({self.times_done} of {self.times_per_day} today)"
         return LogEntry.objects.create(
             care_task=self,
             animal=self.animal,
             entry_type=LogEntry.EntryType.TASK_COMPLETED,
-            note=note or f"Completed: {self.name}",
+            note=note or default_note,
             occurred_on=self.last_completed,
         )
 
