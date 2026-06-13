@@ -122,6 +122,21 @@ class CropLifecycleTests(APITestCase):
         harvest = CareTask.objects.get(auto_key=f"crop:{crop.pk}:harvest")
         self.assertEqual(harvest.due_date, date(2026, 9, 30))
 
+    def test_board_wraps_growing_crops_with_stage_info(self):
+        crop = self.make_crop(crop="potatoes_maincrop", bed="Bed 1")
+        harvested = self.make_crop(crop="lettuce")
+        self.client.post(f"/api/crops/{harvested.pk}/harvest/")
+        res = self.client.get("/api/crops/board/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)  # the harvested lettuce is excluded
+        card = res.data["crops"][0]
+        self.assertEqual(card["id"], crop.pk)
+        self.assertEqual(card["label"], "Potatoes (maincrop)")
+        self.assertEqual(card["bed"], "Bed 1")
+        self.assertIn("stage", card)
+        self.assertIn("progress", card)
+        self.assertIn("estimated_harvest", card)
+
     def test_delete_removes_auto_reminders(self):
         crop = self.make_crop()
         prefix = f"crop:{crop.pk}:"
