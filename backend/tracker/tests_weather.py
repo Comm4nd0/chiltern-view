@@ -12,6 +12,7 @@ from . import weather as weather_mod
 from .models import CareTask, Crop, WeatherSnapshot
 from .watering import apply_rain_deferral, effective_days_overdue
 from .weather import frost_warning, get_weather
+from .weather_tasks import sync_frost_task
 
 
 def fake_open_meteo(rain_past=0.0, rain_today=0.0, prob_today=0, tmin=8.0):
@@ -159,6 +160,36 @@ class FrostWarningTests(TestCase):
         Crop.objects.create(crop="courgettes", planted_on=timezone.localdate())
         warning = frost_warning(weather_payload(frost_days=0), today=date(2026, 5, 10))
         self.assertIsNone(warning)
+
+
+class FrostTaskTests(TestCase):
+    @patch("tracker.weather_tasks.frost_warning")
+    def test_creates_one_off_reminder_idempotently(self, mock_fw):
+        night = str(timezone.localdate() + timedelta(days=1))
+        mock_fw.return_value = {
+            "nights": [night],
+            "crops": ["Courgettes"],
+            "message": "Frost risk Thu night — cover the Courgettes",
+        }
+        task = sync_frost_task(weather={"today": {}})
+        self.assertIsNotNone(task)
+        self.assertEqual(task.auto_key, f"weather:frost:{night}")
+        self.assertEqual(str(task.due_date), night)
+        self.assertTrue(task.is_one_off)
+        # A second run during the same cold snap reuses the reminder.
+        again = sync_frost_task(weather={"today": {}})
+        self.assertEqual(again.pk, task.pk)
+        self.assertEqual(
+            CareTask.objects.filter(auto_key__startswith="weather:frost:").count(), 1
+        )
+
+    @patch("tracker.weather_tasks.frost_warning")
+    def test_no_warning_creates_nothing(self, mock_fw):
+        mock_fw.return_value = None
+        self.assertIsNone(sync_frost_task(weather={"today": {}}))
+        self.assertFalse(
+            CareTask.objects.filter(auto_key__startswith="weather:frost:").exists()
+        )
 
 
 class WeatherApiTests(APITestCase):

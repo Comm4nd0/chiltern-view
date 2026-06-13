@@ -53,10 +53,11 @@ services:
       start_period: 20s
     restart: unless-stopped
 
-  # Runs the recurring jobs (web-push reminders). Same image and env as the
-  # backend; the entrypoint is skipped so it doesn't re-run migrations. The
-  # command is idempotent (one batch per browser per day), so a 15-minute loop
-  # is plenty and self-heals after restarts.
+  # Runs the recurring jobs (weather reminders + web-push reminders). Same image
+  # and env as the backend; the entrypoint is skipped so it doesn't re-run
+  # migrations. Both commands are idempotent (one frost reminder per night, one
+  # push batch per browser per day), so a 15-minute loop is plenty and self-heals
+  # after restarts.
   scheduler:
     build: ./backend
     environment: *backend-environment
@@ -66,7 +67,7 @@ services:
       backend:
         condition: service_started
     entrypoint: []
-    command: sh -c "while true; do python manage.py send_push_reminders; sleep 900; done"
+    command: sh -c "while true; do python manage.py sync_weather_tasks; python manage.py send_push_reminders; sleep 900; done"
     restart: unless-stopped
 
   web:
