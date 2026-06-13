@@ -1,0 +1,138 @@
+# Chiltern View → Home Assistant (REST integration)
+#
+# A self-contained "package" that pulls the smallholding dashboard into Home
+# Assistant: sensors for eggs / tasks / crops / animals / weather, and commands
+# to add eggs and complete tasks. Pair it with dashboard.yaml for the Lovelace
+# cards. Setup lives in docs/HOME_ASSISTANT.md.
+#
+# 1. Copy this file to  <ha-config>/packages/chiltern_view.yaml
+# 2. Enable packages in configuration.yaml (once):
+#        homeassistant:
+#          packages: !include_dir_named packages
+# 3. Set CHILTERN below to your server, then restart Home Assistant.
+#
+# CHILTERN: where Home Assistant reaches the API. Pick ONE and use it everywhere:
+#   - https://chilternview.lumatechsolutions.co.uk   (public, via Caddy → nginx)
+#   - http://<luma001-ip>:8007                       (LAN, via the web nginx)
+#   - http://<luma001-ip>:8009                       (LAN, straight to the backend)
+# The API is currently open (no login), so no auth header is needed. If you ever
+# re-enable token auth, add `headers: { Authorization: "Token <key>" }` to each
+# `rest:` resource and `rest_command:` below.
+
+rest:
+  # One poll of the overview endpoint feeds several sensors (same as the app's
+  # front page does with a single request).
+  - resource: https://chilternview.lumatechsolutions.co.uk/api/overview/
+    scan_interval: 300
+    sensor:
+      - name: "Chiltern eggs today"
+        unique_id: chiltern_eggs_today
+        value_template: "{{ value_json.eggs.today }}"
+        unit_of_measurement: eggs
+        icon: mdi:egg
+
+      - name: "Chiltern eggs this week"
+        unique_id: chiltern_eggs_this_week
+        value_template: "{{ value_json.eggs.this_week }}"
+        unit_of_measurement: eggs
+        icon: mdi:egg-outline
+
+      - name: "Chiltern tasks overdue"
+        unique_id: chiltern_tasks_overdue
+        value_template: "{{ value_json.tasks.overdue }}"
+        icon: mdi:alert-circle
+
+      - name: "Chiltern tasks due today"
+        unique_id: chiltern_tasks_due_today
+        value_template: "{{ value_json.tasks.due_today }}"
+        icon: mdi:calendar-today
+
+      - name: "Chiltern tasks upcoming"
+        unique_id: chiltern_tasks_upcoming
+        value_template: "{{ value_json.tasks.upcoming }}"
+        icon: mdi:calendar-clock
+
+      - name: "Chiltern animals"
+        unique_id: chiltern_animals
+        value_template: "{{ value_json.animals.total }}"
+        icon: mdi:cow
+        json_attributes_path: "$.animals"
+        json_attributes:
+          - by_species
+
+      - name: "Chiltern crops growing"
+        unique_id: chiltern_crops_growing
+        value_template: "{{ value_json.crops.growing }}"
+        unit_of_measurement: crops
+        icon: mdi:sprout
+
+      - name: "Chiltern next harvest"
+        unique_id: chiltern_next_harvest
+        value_template: >
+          {% if value_json.crops.next_harvest %}
+            {{ value_json.crops.next_harvest.label }}
+          {% else %}Nothing pending{% endif %}
+        icon: mdi:basket
+        json_attributes_path: "$.crops.next_harvest"
+        json_attributes:
+          - label
+          - date
+
+      # The "to do" list: state is the count needing attention, and the top five
+      # tasks ride along as an attribute for the markdown card to render.
+      - name: "Chiltern tasks"
+        unique_id: chiltern_tasks
+        value_template: "{{ value_json.tasks.overdue + value_json.tasks.due_today }}"
+        unit_of_measurement: tasks
+        icon: mdi:format-list-checks
+        json_attributes_path: "$.tasks"
+        json_attributes:
+          - overdue
+          - due_today
+          - upcoming
+          - top
+          - per_person
+
+      - name: "Chiltern weather"
+        unique_id: chiltern_weather
+        value_template: >
+          {% if value_json.weather and value_json.weather.today %}
+            {{ value_json.weather.today.tmax }}
+          {% else %}unknown{% endif %}
+        unit_of_measurement: "°C"
+        icon: mdi:weather-partly-cloudy
+        json_attributes_path: "$.weather"
+        json_attributes:
+          - today
+          - days
+          - frost_warning
+          - recent_rain_mm
+          - stale
+
+  # Growing crops with their stage/progress, for the crop-stage card.
+  - resource: https://chilternview.lumatechsolutions.co.uk/api/crops/board/
+    scan_interval: 600
+    sensor:
+      - name: "Chiltern crops"
+        unique_id: chiltern_crops
+        value_template: "{{ value_json.count }}"
+        unit_of_measurement: crops
+        icon: mdi:carrot
+        json_attributes:
+          - crops
+
+# Actions the dashboard buttons call. `count` / `source` / `task_id` are passed
+# in by the button (see dashboard.yaml).
+rest_command:
+  chiltern_add_egg:
+    url: https://chilternview.lumatechsolutions.co.uk/api/egg-records/increment/
+    method: POST
+    content_type: "application/json"
+    payload: >-
+      {"count": {{ count | default(1) }}{% if source is defined %}, "source": "{{ source }}"{% endif %}}
+
+  chiltern_complete_task:
+    url: "https://chilternview.lumatechsolutions.co.uk/api/care-tasks/{{ task_id }}/complete/"
+    method: POST
+    content_type: "application/json"
+    payload: "{}"

@@ -26,9 +26,46 @@ class CropLifecycleTests(APITestCase):
         return CareTask.objects.filter(auto_key__startswith=f"crop:{crop.pk}:")
 
     def test_create_makes_water_and_harvest_reminders(self):
+        # Carrots (a root crop) also get a one-off "thin out" stage reminder.
         crop = self.make_crop()
         keys = set(self.auto_tasks(crop).values_list("auto_key", flat=True))
-        self.assertEqual(keys, {f"crop:{crop.pk}:water", f"crop:{crop.pk}:harvest"})
+        self.assertEqual(
+            keys,
+            {
+                f"crop:{crop.pk}:water",
+                f"crop:{crop.pk}:stage:thinning",
+                f"crop:{crop.pk}:harvest",
+            },
+        )
+
+    def test_potatoes_get_an_earthing_up_stage_reminder(self):
+        crop = self.make_crop(crop="potatoes_maincrop")
+        earth_up = CareTask.objects.get(auto_key=f"crop:{crop.pk}:stage:earthing_up")
+        self.assertEqual(earth_up.name, "Earth up Potatoes (maincrop)")
+        # It's a one-off dated within the growing season, before the harvest.
+        self.assertIsNotNone(earth_up.due_date)
+        self.assertLess(earth_up.due_date, crop.estimated_harvest)
+
+    def test_moving_dates_repoints_stage_reminders(self):
+        crop = self.make_crop()
+        before = CareTask.objects.get(auto_key=f"crop:{crop.pk}:stage:thinning").due_date
+        res = self.client.patch(
+            f"/api/crops/{crop.pk}/", {"expected_harvest": "2026-12-31"}, format="json"
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        after = CareTask.objects.get(auto_key=f"crop:{crop.pk}:stage:thinning").due_date
+        self.assertGreater(after, before)
+
+    def test_editing_a_crop_does_not_resurrect_a_completed_stage_reminder(self):
+        crop = self.make_crop()
+        thin = CareTask.objects.get(auto_key=f"crop:{crop.pk}:stage:thinning")
+        self.client.post(f"/api/care-tasks/{thin.pk}/complete/")
+        thin.refresh_from_db()
+        self.assertFalse(thin.active)  # one-off completion closes it
+        # A later edit must not bring the finished job back to life.
+        self.client.patch(f"/api/crops/{crop.pk}/", {"bed": "Bed 3"}, format="json")
+        thin.refresh_from_db()
+        self.assertFalse(thin.active)
 
     def test_harvest_action_records_yield_and_retires_reminders(self):
         crop = self.make_crop()
@@ -41,8 +78,8 @@ class CropLifecycleTests(APITestCase):
         self.assertEqual(crop.harvested_on, date(2026, 7, 15))
         self.assertEqual(crop.yield_kg, Decimal("12.5"))
         self.assertIn("Good year", crop.notes)
-        # Both auto reminders are closed, not deleted.
-        self.assertEqual(self.auto_tasks(crop).count(), 2)
+        # The auto reminders (water, thinning stage, harvest) are closed, not deleted.
+        self.assertEqual(self.auto_tasks(crop).count(), 3)
         self.assertFalse(self.auto_tasks(crop).filter(active=True).exists())
         # And the harvest landed in the log.
         log = LogEntry.objects.filter(note__startswith="Harvested").get()
@@ -84,6 +121,21 @@ class CropLifecycleTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         harvest = CareTask.objects.get(auto_key=f"crop:{crop.pk}:harvest")
         self.assertEqual(harvest.due_date, date(2026, 9, 30))
+
+    def test_board_wraps_growing_crops_with_stage_info(self):
+        crop = self.make_crop(crop="potatoes_maincrop", bed="Bed 1")
+        harvested = self.make_crop(crop="lettuce")
+        self.client.post(f"/api/crops/{harvested.pk}/harvest/")
+        res = self.client.get("/api/crops/board/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["count"], 1)  # the harvested lettuce is excluded
+        card = res.data["crops"][0]
+        self.assertEqual(card["id"], crop.pk)
+        self.assertEqual(card["label"], "Potatoes (maincrop)")
+        self.assertEqual(card["bed"], "Bed 1")
+        self.assertIn("stage", card)
+        self.assertIn("progress", card)
+        self.assertIn("estimated_harvest", card)
 
     def test_delete_removes_auto_reminders(self):
         crop = self.make_crop()

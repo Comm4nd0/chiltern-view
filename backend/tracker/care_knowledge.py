@@ -10,6 +10,7 @@ routine, because the keys for a known species are shared across the species.
 Each routine entry is ``(key, name, interval_days)``. To add knowledge about a new
 animal or to tweak a schedule, edit the tables below — nothing else needs to change.
 """
+from .crops import STAGE_ACTIONS
 
 # --- Animals ---------------------------------------------------------------
 # Per-species recurring routines. Names are written for the holding ("the hens"),
@@ -111,18 +112,18 @@ GENERIC_ANIMAL_CARE = [
 
 def animal_care_specs(animal):
     """Care-task specs for an animal, as a list of dicts with keys:
-    ``auto_key``, ``name``, ``interval_days``, ``animal``.
+    ``auto_key``, ``name``, ``interval_days`` and (for per-animal jobs) ``animal``.
 
     For a known species the auto_key is shared across the species, so the routine
-    is created once however many of that animal you keep. Unknown species fall
-    back to a generic per-animal routine.
+    is created once however many of that animal you keep — and those jobs are
+    whole-holding ("shut the hens in"), so they carry no ``animal`` link. Unknown
+    species fall back to a generic routine keyed (and linked) per individual.
     """
     routine = ANIMAL_CARE.get(animal.species)
     if routine:
         prefix = f"animal:{animal.species}"
         return [
-            {"auto_key": f"{prefix}:{key}", "name": name,
-             "interval_days": interval, "animal": animal}
+            {"auto_key": f"{prefix}:{key}", "name": name, "interval_days": interval}
             for key, name, interval in routine
         ]
     prefix = f"animal:{animal.species}:{animal.pk}"
@@ -150,22 +151,36 @@ WATER_INTERVAL = {
 
 
 def crop_care_specs(crop):
-    """Care-task specs for a crop planting: a recurring watering job plus a one-off
-    harvest reminder on the estimated harvest date.
+    """Care-task specs for a crop planting: a recurring watering job, a one-off
+    reminder for each actionable growth stage (e.g. earthing up potatoes, thinning
+    roots), and a one-off harvest reminder on the estimated harvest date.
 
     Returned dicts may carry ``interval_days`` (recurring) or ``due_date`` (one-off).
+    Stage reminders come from ``crops.STAGE_ACTIONS`` and are dated from the crop's
+    own scaled timeline, so they move when the planting/harvest dates change.
     """
     where = f" ({crop.bed})" if crop.bed else ""
     label = crop.crop_label
-    return [
+    specs = [
         {
             "auto_key": f"crop:{crop.pk}:water",
             "name": f"Water {label}{where}",
             "interval_days": WATER_INTERVAL.get(crop.crop, DEFAULT_WATER_INTERVAL),
         },
-        {
-            "auto_key": f"crop:{crop.pk}:harvest",
-            "name": f"Harvest {label}{where}",
-            "due_date": crop.estimated_harvest,
-        },
     ]
+    for stage in crop.stages:
+        action = STAGE_ACTIONS.get(stage["label"])
+        if not action:
+            continue
+        slug = stage["label"].lower().replace(" ", "_")
+        specs.append({
+            "auto_key": f"crop:{crop.pk}:stage:{slug}",
+            "name": action.format(label=label, where=where),
+            "due_date": stage["date"],
+        })
+    specs.append({
+        "auto_key": f"crop:{crop.pk}:harvest",
+        "name": f"Harvest {label}{where}",
+        "due_date": crop.estimated_harvest,
+    })
+    return specs

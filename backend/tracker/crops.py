@@ -97,6 +97,17 @@ CROP_CATALOG = {
 DEFAULT_DAYS_TO_HARVEST = 90
 DEFAULT_STAGES = [("Planted", 0.0), ("Growing", 0.40), ("Ready to harvest", 1.0)]
 
+# Growth stages that mean a real cultivation job, mapped to the to-do wording.
+# Adding a crop auto-creates a one-off reminder dated at each of these stages
+# (see ``care_knowledge.crop_care_specs``). Stages not listed here are purely
+# informational on the timeline and raise no reminder. ``{label}`` is the crop
+# name and ``{where}`` is the bed in parentheses (blank if none). To make a new
+# stage actionable, add its label here.
+STAGE_ACTIONS = {
+    "Earthing up": "Earth up {label}{where}",
+    "Thinning": "Thin out {label}{where}",
+}
+
 
 def catalog_list():
     """The catalog as a JSON-serialisable list, for the API + client dropdowns."""

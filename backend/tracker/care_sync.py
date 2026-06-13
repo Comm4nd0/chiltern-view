@@ -1,12 +1,17 @@
-"""Keep a crop's auto-generated care reminders in step with its lifecycle.
+"""Keep auto-generated care reminders in step with their crop or animal.
 
-``signals.py`` creates the reminders when a crop is added; this module retires
-them when the crop is harvested, restores them if a harvest is undone or dates
-change, and removes them when the crop is deleted. All lookups go through the
-``crop:{pk}:`` auto_key prefix — the only link between a crop and its reminders.
+``signals.py`` creates the reminders when a crop or animal is added; this module
+retires and restores them as the crop/animal changes. Crops: reminders are retired
+on harvest, restored if a harvest is undone or dates change, and removed on delete
+(all via the ``crop:{pk}:`` auto_key prefix). Animals: the shared species routine
+is deactivated when the last animal of that species leaves and reactivated when one
+returns, while a generic (per-individual) routine follows that one animal — see
+``reconcile_animal_care``.
 """
-from .care_knowledge import crop_care_specs
-from .models import CareTask
+import re
+
+from .care_knowledge import animal_care_specs, crop_care_specs
+from .models import Animal, CareTask
 
 
 def crop_task_prefix(crop):
@@ -53,7 +58,9 @@ def resync_crop_tasks(crop):
         if created:
             continue
         updates = []
-        if not task.active:
+        if not task.active and not _completed_one_off(task, spec):
+            # Reactivate a reminder closed by harvest, but don't resurrect a
+            # one-off (a stage or harvest job) the user has already ticked off.
             task.active = True
             updates.append("active")
         if spec.get("due_date") and task.due_date != spec["due_date"]:
@@ -69,3 +76,47 @@ def resync_crop_tasks(crop):
             updates.append("recurrence_interval_days")
         if updates:
             task.save(update_fields=updates + ["updated_at"])
+
+
+def _completed_one_off(task, spec):
+    """True for a one-off reminder the user already completed (so leave it closed)."""
+    return bool(spec.get("due_date") and task.last_completed)
+
+
+# --- Animals ---------------------------------------------------------------
+# Auto-keys are either species-level ("animal:chicken:feed", whole-flock, shared)
+# or per-individual ("animal:other:42:check", for species with no built-in
+# routine). This splits the two so the reconcile below can treat them correctly.
+_ANIMAL_KEY = re.compile(r"^animal:(?P<species>[^:]+):(?:(?P<pk>\d+):)?(?P<leaf>.+)$")
+
+
+def reconcile_animal_care():
+    """Switch animal reminders on/off to match which animals are still kept.
+
+    A species' shared routine is active while at least one animal of that species
+    is active, and deactivated otherwise (the last hen left). A per-individual
+    routine follows its own animal: deactivated when that animal is retired, and
+    deleted outright once the animal row is gone. Idempotent — safe to run on
+    every animal save or delete.
+    """
+    active_species = set(
+        Animal.objects.filter(active=True).values_list("species", flat=True)
+    )
+    active_pks = set(Animal.objects.filter(active=True).values_list("pk", flat=True))
+    existing_pks = set(Animal.objects.values_list("pk", flat=True))
+
+    for task in CareTask.objects.filter(auto_key__startswith="animal:"):
+        match = _ANIMAL_KEY.match(task.auto_key)
+        if not match:
+            continue
+        if match.group("pk") is not None:
+            pk = int(match.group("pk"))
+            if pk not in existing_pks:
+                task.delete()  # the animal is gone — its private routine goes too
+                continue
+            should_be_active = pk in active_pks
+        else:
+            should_be_active = match.group("species") in active_species
+        if task.active != should_be_active:
+            task.active = should_be_active
+            task.save(update_fields=["active", "updated_at"])

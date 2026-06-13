@@ -1,0 +1,85 @@
+# Chiltern View — Lovelace dashboard for Home Assistant.
+#
+# Mirrors the app's front page: an at-a-glance overview, the crop-stage cards,
+# the to-do list, weather, and quick "add eggs" buttons. Needs the sensors and
+# rest_commands from chiltern_view.yaml.
+#
+# Use it either way:
+#   - UI:   Settings → Dashboards → add dashboard → ⋮ → "Edit in YAML" → paste a
+#           view's cards, OR add this whole file as a YAML-mode dashboard.
+#   - YAML: lovelace mode yaml — drop this under your dashboards config.
+#
+# Button tap actions use `perform-action` (Home Assistant 2024.8+). On older
+# versions replace `perform-action`→`call-service` and `perform_action`→`service`.
+
+title: Chiltern View
+views:
+  - title: Smallholding
+    path: smallholding
+    icon: mdi:home-heart
+    cards:
+      - type: glance
+        title: At a glance
+        columns: 3
+        entities:
+          - entity: sensor.chiltern_eggs_today
+            name: Eggs today
+          - entity: sensor.chiltern_eggs_this_week
+            name: Eggs / week
+          - entity: sensor.chiltern_crops_growing
+            name: Growing
+          - entity: sensor.chiltern_tasks_overdue
+            name: Overdue
+          - entity: sensor.chiltern_tasks_due_today
+            name: Due today
+          - entity: sensor.chiltern_animals
+            name: Animals
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Add an egg
+            icon: mdi:egg
+            tap_action:
+              action: perform-action
+              perform_action: rest_command.chiltern_add_egg
+              data:
+                count: 1
+          - type: button
+            name: Add a clutch (6)
+            icon: mdi:egg-easter
+            tap_action:
+              action: perform-action
+              perform_action: rest_command.chiltern_add_egg
+              data:
+                count: 6
+
+      - type: markdown
+        title: Crops
+        content: |
+          {% set crops = state_attr('sensor.chiltern_crops', 'crops') or [] %}
+          {% if crops | count == 0 %}Nothing in the ground.{% endif %}
+          {% for c in crops %}
+          **{{ c.label }}**{% if c.variety %} — {{ c.variety }}{% endif %}{% if c.bed %} _({{ c.bed }})_{% endif %}
+          {{ c.stage }} · {{ c.progress }}%{% if c.estimated_harvest %} · harvest {{ as_timestamp(c.estimated_harvest) | timestamp_custom('%-d %b', false) }}{% endif %}
+          {% endfor %}
+
+      - type: markdown
+        title: To do
+        content: |
+          {% set tasks = state_attr('sensor.chiltern_tasks', 'top') or [] %}
+          {% if tasks | count == 0 %}All caught up. 🎉{% endif %}
+          {% for t in tasks %}
+          - **{{ t.name }}**{% if t.assignee_name %} · {{ t.assignee_name }}{% endif %} — {% if t.rain_deferred %}{{ t.weather_note }}{% elif t.status == 'overdue' %}{{ t.days_overdue }} day{{ 's' if t.days_overdue != 1 }} overdue{% elif t.status == 'due_today' %}due today{% else %}upcoming{% endif %}
+          {% endfor %}
+
+      - type: markdown
+        title: Weather
+        content: |
+          {% set w = state_attr('sensor.chiltern_weather', 'today') %}
+          {% set frost = state_attr('sensor.chiltern_weather', 'frost_warning') %}
+          {% if w %}Today **{{ w.tmin }}–{{ w.tmax }}°C**, {{ w.precip_mm }} mm rain.{% else %}No forecast.{% endif %}
+          {% if frost %}
+
+          ⚠️ **{{ frost.message }}**
+          {% endif %}

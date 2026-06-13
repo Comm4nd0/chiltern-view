@@ -289,6 +289,32 @@ class CropViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(crops, many=True)
         return Response(serializer.data)
 
+    @action(detail=False)
+    def board(self, request):
+        """Growing crops with their stage, progress and harvest date, wrapped in a
+        JSON object for Home Assistant.
+
+        HA's RESTful sensor can expose a JSON object's keys as attributes but not a
+        bare list, so the crop cards (mirroring the web/mobile dashboard) are nested
+        under ``crops`` with a ``count`` alongside. Read-only; safe to poll.
+        """
+        crops = list(
+            self.get_queryset().filter(harvested_on__isnull=True).order_by("planted_on")
+        )
+        cards = [
+            {
+                "id": crop.id,
+                "label": crop.crop_label,
+                "variety": crop.variety,
+                "bed": crop.bed,
+                "stage": crop.current_stage,
+                "progress": round(crop.progress * 100),
+                "estimated_harvest": crop.estimated_harvest,
+            }
+            for crop in crops
+        ]
+        return Response({"count": len(cards), "crops": cards})
+
     @action(detail=True, methods=["post"])
     def harvest(self, request, pk=None):
         """Mark a crop harvested and retire its auto reminders.

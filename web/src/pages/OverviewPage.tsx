@@ -25,7 +25,6 @@ import { useCompleteTask, useOverview } from '../api/hooks'
 import type { OverviewTask } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
 import AssigneeAvatar from '../components/AssigneeAvatar'
-import WeatherCard from '../components/WeatherCard'
 import { statusColor } from '../theme'
 import { fmtDate } from '../format'
 
@@ -121,8 +120,6 @@ export default function OverviewPage() {
     <QueryBoundary query={overview}>
       {(data) => (
         <Stack spacing={2}>
-          {data.weather && <WeatherCard weather={data.weather} />}
-
           {/* Needs doing */}
           <Card>
             <CardContent>

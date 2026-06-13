@@ -95,6 +95,7 @@ Base path `/api/`. Standard REST CRUD on each collection, plus:
 | `GET  /api/potato-plantings/timeline/` | Plantings + stages, oldest first. `?show=growing\|all` |
 | `POST /api/egg-records/increment/`     | Quick counter — atomically add to a day's tally.       |
 | `GET  /api/egg-records/summary/`       | Totals for today / week / month / all time.            |
+| `GET  /api/crops/board/`               | Growing crops + stage/progress, wrapped for Home Assistant. |
 
 Collections: `/api/people/`, `/api/animals/`, `/api/care-tasks/`,
 `/api/log-entries/`, `/api/egg-records/`, `/api/potato-plantings/`. All support
@@ -161,6 +162,14 @@ Step-by-step TestFlight setup with a one-command fastlane release is in
 **[docs/IOS_TESTFLIGHT.md](docs/IOS_TESTFLIGHT.md)**. The iOS `Info.plist` already
 permits the app's plain-HTTP calls to Luma001 over the local network
 (`NSAllowsLocalNetworking`).
+
+## Home Assistant
+
+A third front-end over the same API: pull eggs, crop stages, the to-do list,
+animals and weather onto a Home Assistant dashboard as native sensors, with
+buttons to add eggs and complete tasks — no add-on to install, just Home
+Assistant's built-in REST integration. Paste-in config (`homeassistant/`) and
+setup steps are in **[docs/HOME_ASSISTANT.md](docs/HOME_ASSISTANT.md)**.
 
 ## Verification status
 
