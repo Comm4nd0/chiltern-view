@@ -15,7 +15,13 @@ import {
   Typography,
 } from '@mui/material'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { useAnimalLog, useAnimalTasks, useAnimals, useCompleteTask } from '../api/hooks'
+import {
+  useAnimalLog,
+  useAnimalTasks,
+  useAnimals,
+  useCompleteTask,
+  useUncompleteTask,
+} from '../api/hooks'
 import type { CareTask, LogEntry } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
 import AnimalDialog from '../components/AnimalDialog'
@@ -74,13 +80,14 @@ export default function AnimalDetailPage() {
   const log = useAnimalLog(animalId, types)
   const tasks = useAnimalTasks(animalId)
   const complete = useCompleteTask()
+  const uncomplete = useUncompleteTask()
   const [addingNote, setAddingNote] = useState(false)
   const [editingNote, setEditingNote] = useState<LogEntry | null>(null)
   const [editingAnimal, setEditingAnimal] = useState(false)
   const [addingTask, setAddingTask] = useState(false)
   const [editingTask, setEditingTask] = useState<CareTask | null>(null)
   const [completingId, setCompletingId] = useState<number | null>(null)
-  const [snack, setSnack] = useState<string | null>(null)
+  const [snack, setSnack] = useState<{ msg: string; undoId: number | null } | null>(null)
 
   const entries = log.data?.pages.flatMap((p) => p.results) ?? []
 
@@ -88,12 +95,18 @@ export default function AnimalDetailPage() {
     setCompletingId(task.id)
     try {
       await complete.mutateAsync({ id: task.id })
-      setSnack(`Marked "${task.name}" done`)
+      setSnack({ msg: `Marked "${task.name}" done`, undoId: task.id })
     } catch (e) {
-      setSnack(e instanceof Error ? e.message : 'Failed')
+      setSnack({ msg: e instanceof Error ? e.message : 'Failed', undoId: null })
     } finally {
       setCompletingId(null)
     }
+  }
+
+  const onUndo = async () => {
+    const id = snack?.undoId
+    setSnack(null)
+    if (id != null) await uncomplete.mutateAsync(id)
   }
 
   return (
@@ -280,9 +293,16 @@ export default function AnimalDetailPage() {
             )}
             <Snackbar
               open={snack != null}
-              autoHideDuration={3000}
+              autoHideDuration={5000}
               onClose={() => setSnack(null)}
-              message={snack ?? ''}
+              message={snack?.msg ?? ''}
+              action={
+                snack?.undoId != null ? (
+                  <Button color="primary" size="small" onClick={onUndo}>
+                    Undo
+                  </Button>
+                ) : undefined
+              }
             />
             {(addingNote || editingNote) && (
               <LogEntryDialog

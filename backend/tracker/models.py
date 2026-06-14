@@ -119,6 +119,12 @@ class CareTask(models.Model):
         blank=True,
         help_text="For one-off tasks: the date it's due. Leave blank for recurring tasks.",
     )
+    due_time = models.TimeField(
+        null=True,
+        blank=True,
+        help_text="Optional clock time the task is due / its reminder fires, "
+        "e.g. 07:30 to feed the dog. Blank = anytime that day (e.g. collect the eggs).",
+    )
     auto_key = models.CharField(
         max_length=120,
         blank=True,
@@ -212,6 +218,38 @@ class CareTask(models.Model):
             occurred_on=self.last_completed,
         )
 
+    def uncomplete(self):
+        """Undo the most recent completion, restoring the prior schedule.
+
+        Reverses one ``mark_done`` using the TASK_COMPLETED log entries it writes,
+        so the previous ``last_completed`` is restored from history rather than
+        guessed: drop the latest completion, then re-read state from whatever
+        completion is now newest. Steps back one repeat of a several-times-a-day
+        task, and revives a one-off that completing had deactivated. Returns True
+        if anything was undone, False if there was nothing to undo.
+        """
+        completions = self.log_entries.filter(
+            entry_type=LogEntry.EntryType.TASK_COMPLETED
+        ).order_by("-occurred_on", "-created_at")
+        latest = completions.first()
+        if latest is None:
+            return False
+        latest.delete()
+        remaining = self.log_entries.filter(
+            entry_type=LogEntry.EntryType.TASK_COMPLETED
+        ).order_by("-occurred_on", "-created_at")
+        newest = remaining.first()
+        if newest is not None:
+            self.last_completed = newest.occurred_on
+            self.times_done = remaining.filter(occurred_on=newest.occurred_on).count()
+        else:
+            self.last_completed = None
+            self.times_done = 0
+        if self.is_one_off:
+            self.active = True
+        self.save(update_fields=["last_completed", "times_done", "active", "updated_at"])
+        return True
+
 
 class LogEntry(models.Model):
     """A dated note about the holding, optionally tied to an animal or task."""
@@ -292,6 +330,35 @@ class PushSubscription(models.Model):
 
     def __str__(self):
         return f"{self.user.username} @ {self.endpoint[:40]}…"
+
+
+class PushReminderLog(models.Model):
+    """Dedup stamp for *timed* web-push pings — one per subscription/task/day.
+
+    The digest dedups via ``PushSubscription.last_sent_date`` (one batch a day),
+    but a task pinned to a clock time fires on its own schedule, so it needs its
+    own per-task stamp to keep the scheduler loop from re-sending it each run.
+    """
+
+    subscription = models.ForeignKey(
+        PushSubscription, on_delete=models.CASCADE, related_name="timed_reminders"
+    )
+    care_task = models.ForeignKey(
+        CareTask, on_delete=models.CASCADE, related_name="timed_reminders"
+    )
+    sent_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["subscription", "care_task", "sent_date"],
+                name="unique_timed_reminder_per_day",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.care_task_id} → {self.subscription_id} on {self.sent_date}"
 
 
 class WeatherSnapshot(models.Model):

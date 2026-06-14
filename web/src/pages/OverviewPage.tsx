@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box,
@@ -8,6 +8,7 @@ import {
   CardContent,
   Chip,
   Divider,
+  Snackbar,
   Stack,
   Typography,
 } from '@mui/material'
@@ -21,7 +22,7 @@ import {
   CheckCircle,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
-import { useCompleteTask, useOverview } from '../api/hooks'
+import { useCompleteTask, useOverview, useUncompleteTask } from '../api/hooks'
 import type { OverviewTask } from '../api/types'
 import QueryBoundary from '../components/QueryBoundary'
 import AssigneeAvatar from '../components/AssigneeAvatar'
@@ -115,8 +116,26 @@ export default function OverviewPage() {
   const overview = useOverview()
   const navigate = useNavigate()
   const complete = useCompleteTask()
+  const uncomplete = useUncompleteTask()
+  const [snack, setSnack] = useState<{ msg: string; undoId: number | null } | null>(null)
+
+  const onComplete = async (task: OverviewTask) => {
+    try {
+      await complete.mutateAsync({ id: task.id })
+      setSnack({ msg: `Marked "${task.name}" done`, undoId: task.id })
+    } catch (e) {
+      setSnack({ msg: e instanceof Error ? e.message : 'Failed', undoId: null })
+    }
+  }
+
+  const onUndo = async () => {
+    const id = snack?.undoId
+    setSnack(null)
+    if (id != null) await uncomplete.mutateAsync(id)
+  }
 
   return (
+    <>
     <QueryBoundary query={overview}>
       {(data) => (
         <Stack spacing={2}>
@@ -186,7 +205,7 @@ export default function OverviewPage() {
                         size="small"
                         variant="outlined"
                         disabled={complete.isPending}
-                        onClick={() => complete.mutate({ id: task.id })}
+                        onClick={() => onComplete(task)}
                       >
                         Done
                       </Button>
@@ -274,5 +293,19 @@ export default function OverviewPage() {
         </Stack>
       )}
     </QueryBoundary>
+    <Snackbar
+      open={snack != null}
+      autoHideDuration={5000}
+      onClose={() => setSnack(null)}
+      message={snack?.msg ?? ''}
+      action={
+        snack?.undoId != null ? (
+          <Button color="primary" size="small" onClick={onUndo}>
+            Undo
+          </Button>
+        ) : undefined
+      }
+    />
+    </>
   )
 }

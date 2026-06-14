@@ -61,6 +61,7 @@ class CareTaskCard extends StatelessWidget {
     final subtitle = <String>[
       if (task.animalName != null) task.animalName!,
       task.recurrenceLabel,
+      if (task.dueTimeLabel != null) task.dueTimeLabel!,
     ].join(' · ');
 
     return Card(

@@ -58,6 +58,24 @@ void main() {
       expect(feedTask(dueDate: '2026-01-01').recurrenceLabel, 'one-off');
     });
 
+    test('parses a clock time into dueTime and a 24h label', () {
+      final timed = CareTask.fromJson({
+        'id': 3,
+        'name': 'Feed the dog',
+        'recurrence_interval_days': 1,
+        'due_time': '07:30:00',
+        'next_due': '2026-01-01',
+        'days_overdue': 0,
+        'status': 'due_today',
+      });
+      expect(timed.dueTime?.hour, 7);
+      expect(timed.dueTime?.minute, 30);
+      expect(timed.dueTimeLabel, '07:30');
+      // A timeless task (e.g. collect the eggs) has no time.
+      expect(feedTask(everyDays: 1).dueTime, isNull);
+      expect(feedTask(everyDays: 1).dueTimeLabel, isNull);
+    });
+
     test('shows progress through a several-times-a-day task', () {
       expect(feedTask(times: 4, done: 0).dueLabel, 'Due today');
       expect(feedTask(times: 4, done: 2).dueLabel, 'Due today (2 of 4 done)');

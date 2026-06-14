@@ -95,14 +95,17 @@ class NotificationService {
         );
 
     // --- Morning digest: for each day in the window, list what's due/overdue.
-    // Rain-deferred watering jobs are left out of TODAY's digest only — the
-    // flag reflects the forecast at sync time, so it's best-effort and the
-    // schedule re-syncs every time the app comes to the foreground.
+    // Clock-timed tasks (e.g. the 07:30 feed) are left out — they get their own
+    // ping at their time below. Rain-deferred watering jobs are left out of
+    // TODAY's digest only — the flag reflects the forecast at sync time, so it's
+    // best-effort and the schedule re-syncs every time the app comes to the
+    // foreground.
     for (var offset = 0; offset <= _windowDays && id < _maxScheduled; offset++) {
       final day = today.add(Duration(days: offset));
       final when = fireTime(day);
       if (when.isBefore(now)) continue; // today's time already passed
       final due = myTasks
+          .where((t) => t.dueTime == null)
           .where((t) => !_dueDate(t).isAfter(day))
           .where((t) => !(offset == 0 && t.rainDeferred))
           .toList();
@@ -110,16 +113,21 @@ class NotificationService {
       await _schedule(id++, 'Tasks to do', _digestBody(due), when);
     }
 
-    // --- Per-task ping on each task's due date.
+    // --- Per-task ping on each task's due date: at its clock time when set
+    // (e.g. 07:30 to feed the dog), otherwise at the configured reminder time.
     for (final task in myTasks) {
       if (id >= _maxScheduled) break;
       final dueDate = _dueDate(task);
       if (dueDate.isAfter(horizon)) continue;
-      final when = fireTime(dueDate);
+      final t = task.dueTime;
+      final when = t != null
+          ? tz.TZDateTime(tz.local, dueDate.year, dueDate.month, dueDate.day, t.hour, t.minute)
+          : fireTime(dueDate);
       if (when.isBefore(now)) continue; // overdue/today-past — digest covers it
       if (task.rainDeferred && !dueDate.isAfter(today)) continue; // rain covers today
       final detail = task.animalName != null ? 'For ${task.animalName}' : 'Care task due today';
-      await _schedule(id++, 'Due today: ${task.name}', detail, when);
+      final title = t != null ? 'Time to: ${task.name}' : 'Due today: ${task.name}';
+      await _schedule(id++, title, detail, when);
     }
   }
 

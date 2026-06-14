@@ -1,29 +1,35 @@
-"""Send web-push task reminders: a morning digest plus due-today pings.
+"""Send web-push task reminders: timed pings plus a morning digest.
 
 Mirrors the phone app's on-device reminders (``notification_service.dart``):
-after ``PUSH_REMINDER_HOUR`` local time, each subscription gets one digest
-listing everything due or overdue for its person — same wording as mobile —
-plus a "Due today" ping per task actually due today (capped). Rain-deferred
-watering jobs are left out, matching the dashboard.
 
-Idempotent via ``PushSubscription.last_sent_date``: the scheduler loop can run
-this every few minutes and each browser still gets at most one batch a day.
-A transient send failure leaves the stamp unset so the next run retries; a
-404/410 from the push service deletes the subscription (browser revoked it).
+* A task pinned to a clock time (e.g. feed the dog at 07:30) gets a **timed
+  ping** when its time arrives, whatever the hour — deduped per task per day via
+  ``PushReminderLog`` so the scheduler loop only sends it once.
+* Everything else (timeless jobs like collecting eggs) is gathered into one
+  **morning digest** after ``PUSH_REMINDER_HOUR`` — same wording as mobile — plus
+  a "Due today" ping per timeless task actually due today (capped). The digest is
+  deduped per subscription per day via ``PushSubscription.last_sent_date``.
+
+Rain-deferred watering jobs are left out, matching the dashboard. The scheduler
+loop can run this every few minutes; both passes are idempotent. A transient send
+failure leaves the dedup stamp unset so the next run retries; a 404/410 from the
+push service deletes the subscription (browser revoked it).
 """
 import json
+from datetime import timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from pywebpush import WebPushException, webpush
 
-from ...models import CareTask, PushSubscription
+from ...models import CareTask, PushReminderLog, PushSubscription
 from ...views import person_for
 from ...watering import apply_rain_deferral
 from ...weather import get_weather
 
 MAX_PINGS = 5  # cap per-task notifications; the digest covers the rest
+PRUNE_AFTER_DAYS = 7  # keep timed-ping dedup rows around briefly, then bin them
 
 
 def digest_body(due):
@@ -35,7 +41,7 @@ def digest_body(due):
 
 
 class Command(BaseCommand):
-    help = "Send due-task web push reminders (at most one batch per subscription per day)."
+    help = "Send due-task web push reminders (timed pings + one daily digest per browser)."
 
     def handle(self, *args, **options):
         if not settings.VAPID_PRIVATE_KEY:
@@ -43,19 +49,18 @@ class Command(BaseCommand):
             return
         now = timezone.localtime()
         today = now.date()
-        if now.hour < settings.PUSH_REMINDER_HOUR:
-            return
-        subscriptions = list(
-            PushSubscription.objects.select_related("user").exclude(last_sent_date=today)
-        )
+        subscriptions = list(PushSubscription.objects.select_related("user"))
         if not subscriptions:
             return
         weather = get_weather()
+        digest_due = now.hour >= settings.PUSH_REMINDER_HOUR
         for sub in subscriptions:
             person = person_for(sub.user)
             if person is None:
-                # Same gate as mobile: reminders need a linked person.
-                self._stamp(sub, today)
+                # Same gate as mobile: reminders need a linked person. Stamp the
+                # digest (after the hour) so we don't reconsider it all day.
+                if digest_due and sub.last_sent_date != today:
+                    self._stamp(sub, today)
                 continue
             tasks = list(
                 CareTask.objects.select_related("animal").filter(active=True, assignee=person)
@@ -66,21 +71,61 @@ class Command(BaseCommand):
                 for task in tasks
                 if task.days_overdue >= 0 and not getattr(task, "rain_deferred", False)
             ]
-            due.sort(key=lambda task: task.days_overdue, reverse=True)
-            if not due:
-                self._stamp(sub, today)
-                continue
-            outcome = self._push(sub, "Tasks to do", digest_body(due), tag="chiltern-digest")
-            if outcome is None:
-                continue  # subscription pruned
-            if outcome:
-                for task in [t for t in due if t.days_overdue == 0][:MAX_PINGS]:
-                    detail = f"For {task.animal.name}" if task.animal else "Care task due today"
-                    self._push(sub, f"Due today: {task.name}", detail, tag=f"task-{task.id}")
-                self._stamp(sub, today)
-            # outcome is False → transient failure: leave unstamped so the
-            # next scheduler run retries.
+            # Pass 1: timed pings — any hour, deduped per task per day.
+            if not self._send_timed(sub, due, now, today):
+                continue  # subscription pruned mid-pass; don't touch it again
+            # Pass 2: morning digest — timeless tasks only, once a day.
+            if digest_due and sub.last_sent_date != today:
+                self._send_digest(sub, due, today)
+        self._prune(today)
         self.stdout.write(f"Processed {len(subscriptions)} subscription(s).")
+
+    def _send_timed(self, sub, due, now, today):
+        """Ping each clock-timed task whose time has arrived. Returns False if the
+        subscription was pruned (browser gone), True otherwise."""
+        pending = [
+            task
+            for task in due
+            if task.due_time is not None
+            and task.due_time <= now.time()
+            and not PushReminderLog.objects.filter(
+                subscription=sub, care_task=task, sent_date=today
+            ).exists()
+        ]
+        pending.sort(key=lambda task: task.due_time)
+        for task in pending:
+            detail = f"For {task.animal.name}" if task.animal else "Care task due now"
+            outcome = self._push(sub, f"Time to: {task.name}", detail, tag=f"task-{task.id}")
+            if outcome is None:
+                return False  # subscription pruned
+            if outcome:
+                PushReminderLog.objects.get_or_create(
+                    subscription=sub, care_task=task, sent_date=today
+                )
+            # outcome False → transient: leave unlogged so the next run retries.
+        return True
+
+    def _send_digest(self, sub, due, today):
+        """One digest of timeless due tasks, plus a ping per timeless task due
+        today. Timed tasks are handled by ``_send_timed``."""
+        timeless = [task for task in due if task.due_time is None]
+        timeless.sort(key=lambda task: task.days_overdue, reverse=True)
+        if not timeless:
+            self._stamp(sub, today)
+            return
+        outcome = self._push(sub, "Tasks to do", digest_body(timeless), tag="chiltern-digest")
+        if outcome is None:
+            return  # subscription pruned
+        if outcome:
+            for task in [t for t in timeless if t.days_overdue == 0][:MAX_PINGS]:
+                detail = f"For {task.animal.name}" if task.animal else "Care task due today"
+                self._push(sub, f"Due today: {task.name}", detail, tag=f"task-{task.id}")
+            self._stamp(sub, today)
+        # outcome False → transient failure: leave unstamped so the next run retries.
+
+    def _prune(self, today):
+        cutoff = today - timedelta(days=PRUNE_AFTER_DAYS)
+        PushReminderLog.objects.filter(sent_date__lt=cutoff).delete()
 
     def _stamp(self, sub, today):
         sub.last_sent_date = today

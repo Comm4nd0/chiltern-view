@@ -40,7 +40,7 @@ class CareTaskSerializer(serializers.ModelSerializer):
             "id", "name", "description", "animal", "animal_name",
             "assignee", "assignee_name",
             "recurrence_interval_days", "times_per_day", "times_done_today",
-            "last_completed", "due_date", "auto_key", "active",
+            "last_completed", "due_date", "due_time", "auto_key", "active",
             "next_due", "days_overdue", "status",
             "rain_deferred", "weather_note",
             "created_at", "updated_at",
@@ -48,12 +48,16 @@ class CareTaskSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at", "updated_at", "auto_key"]
 
     def validate(self, attrs):
-        """A one-off task happens once full stop — it can't repeat during its day,
-        so a due_date forces times_per_day back to 1."""
+        """A task done once at a fixed point can't also repeat during its day, so a
+        due_date (one-off) or a due_time (clock-timed, e.g. the 07:30 feed) forces
+        times_per_day back to 1."""
         due_date = attrs.get(
             "due_date", self.instance.due_date if self.instance else None
         )
-        if due_date is not None:
+        due_time = attrs.get(
+            "due_time", self.instance.due_time if self.instance else None
+        )
+        if due_date is not None or due_time is not None:
             attrs["times_per_day"] = 1
         return attrs
 

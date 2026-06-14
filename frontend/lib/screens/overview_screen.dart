@@ -62,18 +62,38 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   void _refresh() => setState(() => _future = _api.overview());
 
-  Future<void> _complete(int id) async {
+  Future<void> _complete(int id, String name) async {
     setState(() => _completingId = id);
     try {
       await _api.completeTask(id);
       _refresh();
       syncReminders(_api);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Marked "$name" done'),
+            action: SnackBarAction(label: 'Undo', onPressed: () => _undo(id)),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _completingId = null);
+    }
+  }
+
+  Future<void> _undo(int id) async {
+    try {
+      await _api.uncompleteTask(id);
+      _refresh();
+      syncReminders(_api);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
     }
   }
 
@@ -284,7 +304,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
             const SizedBox(width: 8),
           ],
           OutlinedButton(
-            onPressed: _completingId == t.id ? null : () => _complete(t.id),
+            onPressed: _completingId == t.id ? null : () => _complete(t.id, t.name),
             child: const Text('Done'),
           ),
         ],

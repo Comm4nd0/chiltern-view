@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Box, Chip, Fab, Snackbar, Stack, Typography } from '@mui/material'
+import { Box, Button, Chip, Fab, Snackbar, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { useCompleteTask, useDashboard, usePeople } from '../api/hooks'
+import { useCompleteTask, useDashboard, usePeople, useUncompleteTask } from '../api/hooks'
 import { useMyPersonId } from '../config'
 import QueryBoundary from '../components/QueryBoundary'
 import CareTaskCard from '../components/CareTaskCard'
@@ -14,9 +14,10 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<string | undefined>(myId != null ? String(myId) : undefined)
   const dashboard = useDashboard(filter)
   const complete = useCompleteTask()
+  const uncomplete = useUncompleteTask()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<CareTask | null>(null)
-  const [snack, setSnack] = useState<string | null>(null)
+  const [snack, setSnack] = useState<{ msg: string; undoId: number | null } | null>(null)
   const [completingId, setCompletingId] = useState<number | null>(null)
 
   const chips = useMemo(() => {
@@ -34,12 +35,18 @@ export default function DashboardPage() {
     setCompletingId(id)
     try {
       await complete.mutateAsync({ id })
-      setSnack(`Marked "${name}" done`)
+      setSnack({ msg: `Marked "${name}" done`, undoId: id })
     } catch (e) {
-      setSnack(e instanceof Error ? e.message : 'Failed')
+      setSnack({ msg: e instanceof Error ? e.message : 'Failed', undoId: null })
     } finally {
       setCompletingId(null)
     }
+  }
+
+  const onUndo = async () => {
+    const id = snack?.undoId
+    setSnack(null)
+    if (id != null) await uncomplete.mutateAsync(id)
   }
 
   return (
@@ -102,9 +109,16 @@ export default function DashboardPage() {
       )}
       <Snackbar
         open={snack != null}
-        autoHideDuration={3000}
+        autoHideDuration={5000}
         onClose={() => setSnack(null)}
-        message={snack ?? ''}
+        message={snack?.msg ?? ''}
+        action={
+          snack?.undoId != null ? (
+            <Button color="primary" size="small" onClick={onUndo}>
+              Undo
+            </Button>
+          ) : undefined
+        }
       />
     </Box>
   )

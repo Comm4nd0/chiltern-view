@@ -106,11 +106,26 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
       await _api.completeTask(task.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Marked "${task.name}" done')),
+        SnackBar(
+          content: Text('Marked "${task.name}" done'),
+          action: SnackBarAction(label: 'Undo', onPressed: () => _undoTask(task)),
+        ),
       );
       _loadTasks();
       _loadLog(reset: true); // completion lands in the journal too
       syncReminders(_api); // due date moved — refresh scheduled reminders
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
+  Future<void> _undoTask(CareTask task) async {
+    try {
+      await _api.uncompleteTask(task.id);
+      _loadTasks();
+      _loadLog(reset: true); // the completion entry is removed from the journal
+      syncReminders(_api); // schedule restored — refresh reminders
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));

@@ -56,6 +56,8 @@ export interface CreateTaskInput {
   recurrence_interval_days?: number
   times_per_day?: number
   due_date?: string | null
+  /** Clock time "HH:MM" the task is due / its reminder fires; null = anytime that day. */
+  due_time?: string | null
   description?: string
   animal?: number | null
   assignee?: number | null
@@ -110,6 +112,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(note ? { note } : {}),
     }),
+  // Undo an accidental "Done": restores the task's prior schedule.
+  uncompleteTask: (id: number) =>
+    request<CareTask>(`/care-tasks/${id}/uncomplete/`, { method: 'POST', body: '{}' }),
   createTask: (input: CreateTaskInput) =>
     request<CareTask>('/care-tasks/', { method: 'POST', body: JSON.stringify(input) }),
   updateTask: (id: number, patch: UpdateTaskInput) =>

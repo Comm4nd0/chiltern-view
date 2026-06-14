@@ -35,6 +35,8 @@ export interface CareTask {
   times_done_today: number
   last_completed: string | null
   due_date: string | null
+  /** Clock time the task is due / its reminder fires ("HH:MM:SS"); null = anytime that day. */
+  due_time: string | null
   active: boolean
   next_due: string
   days_overdue: number

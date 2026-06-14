@@ -106,6 +106,17 @@ export function useCompleteTask() {
   })
 }
 
+export function useUncompleteTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.uncompleteTask(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
 export function useCreateTask() {
   const qc = useQueryClient()
   return useMutation({

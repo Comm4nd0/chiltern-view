@@ -27,6 +27,7 @@ class _TaskSheetState extends State<TaskSheet> {
   final _timesPerDay = TextEditingController(text: '1');
   bool _repeats = true;
   DateTime _dueDate = DateTime.now();
+  TimeOfDay? _dueTime; // null = anytime that day
   int? _animalId;
   int? _assigneeId;
   List<Animal> _animals = [];
@@ -46,6 +47,7 @@ class _TaskSheetState extends State<TaskSheet> {
       _name.text = t.name;
       _interval.text = t.recurrenceIntervalDays.toString();
       _timesPerDay.text = t.timesPerDay.toString();
+      _dueTime = t.dueTime;
       _animalId = t.animal;
       _assigneeId = t.assignee;
       if (t.isOneOff) {
@@ -113,13 +115,24 @@ class _TaskSheetState extends State<TaskSheet> {
     if (picked != null) setState(() => _dueDate = picked);
   }
 
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _dueTime ?? const TimeOfDay(hour: 7, minute: 30),
+    );
+    if (picked != null) setState(() => _dueTime = picked);
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final name = _name.text.trim();
     final interval =
         _repeats ? int.parse(_interval.text.trim()) : (widget.task?.recurrenceIntervalDays ?? 7);
-    final timesPerDay = _repeats ? int.parse(_timesPerDay.text.trim()) : 1;
+    // A clock-timed task happens once at that time; "times a day" only applies to
+    // timeless repeating tasks.
+    final dueTime = _repeats ? _dueTime : null;
+    final timesPerDay = (_repeats && dueTime == null) ? int.parse(_timesPerDay.text.trim()) : 1;
     final dueDate = _repeats ? null : _dueDate;
     try {
       if (_editing) {
@@ -129,6 +142,7 @@ class _TaskSheetState extends State<TaskSheet> {
           recurrenceIntervalDays: interval,
           timesPerDay: timesPerDay,
           dueDate: dueDate,
+          dueTime: dueTime,
           animal: _animalId,
           assignee: _assigneeId,
         );
@@ -138,6 +152,7 @@ class _TaskSheetState extends State<TaskSheet> {
           recurrenceIntervalDays: interval,
           timesPerDay: timesPerDay,
           dueDate: dueDate,
+          dueTime: dueTime,
           animal: _animalId,
           assignee: _assigneeId,
         );
@@ -200,7 +215,7 @@ class _TaskSheetState extends State<TaskSheet> {
               onSelectionChanged: (s) => setState(() => _repeats = s.first),
             ),
             const SizedBox(height: 12),
-            if (_repeats)
+            if (_repeats) ...[
               Row(
                 children: [
                   Expanded(
@@ -216,20 +231,41 @@ class _TaskSheetState extends State<TaskSheet> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: TextFormField(
-                      controller: _timesPerDay,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Times a day',
-                        helperText: 'e.g. 4 feeds a day',
-                        border: OutlineInputBorder(),
+                    child: InkWell(
+                      onTap: _pickTime,
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: 'Time (optional)',
+                          border: const OutlineInputBorder(),
+                          suffixIcon: _dueTime != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () => setState(() => _dueTime = null),
+                                )
+                              : const Icon(Icons.schedule),
+                        ),
+                        child: Text(_dueTime != null ? _dueTime!.format(context) : 'Any time'),
                       ),
-                      validator: _positiveInt,
                     ),
                   ),
                 ],
-              )
-            else
+              ),
+              // A clock time means "once at that time", so times-a-day only shows
+              // for timeless tasks (e.g. collect the eggs, sometime today).
+              if (_dueTime == null) ...[
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _timesPerDay,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Times a day',
+                    helperText: 'e.g. 4 feeds a day',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: _positiveInt,
+                ),
+              ],
+            ] else
               InkWell(
                 onTap: _pickDate,
                 child: InputDecorator(

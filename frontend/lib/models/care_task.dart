@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart' show TimeOfDay;
+
 import '../util/json.dart';
 
 class CareTask {
@@ -13,6 +15,7 @@ class CareTask {
   final int timesDoneToday; // completions recorded so far today
   final DateTime? lastCompleted;
   final DateTime? dueDate; // set => one-off task (doesn't repeat)
+  final TimeOfDay? dueTime; // set => due/reminds at a clock time; null = anytime that day
   final bool active;
   final DateTime nextDue;
   final int daysOverdue; // >0 overdue, 0 due today, <0 upcoming
@@ -33,6 +36,7 @@ class CareTask {
     this.timesDoneToday = 0,
     required this.lastCompleted,
     this.dueDate,
+    this.dueTime,
     required this.active,
     required this.nextDue,
     required this.daysOverdue,
@@ -54,6 +58,7 @@ class CareTask {
         timesDoneToday: json['times_done_today'] as int? ?? 0,
         lastCompleted: asNullableDate(json['last_completed']),
         dueDate: asNullableDate(json['due_date']),
+        dueTime: _parseTime(json['due_time'] as String?),
         active: json['active'] as bool? ?? true,
         nextDue: asDate(json['next_due']),
         daysOverdue: json['days_overdue'] as int? ?? 0,
@@ -63,6 +68,24 @@ class CareTask {
       );
 
   bool get isOverdue => status == 'overdue';
+
+  /// Parse the API's "HH:MM:SS" time into a [TimeOfDay] (null when unset).
+  static TimeOfDay? _parseTime(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final parts = value.split(':');
+    if (parts.length < 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
+  /// "07:30" (24h) for display, or null when the task has no set time.
+  String? get dueTimeLabel {
+    final t = dueTime;
+    if (t == null) return null;
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
 
   /// One-off tasks have a fixed due date and don't repeat.
   bool get isOneOff => dueDate != null;

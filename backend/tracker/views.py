@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db.models import F, Q, Sum
@@ -183,6 +183,10 @@ class CareTaskViewSet(viewsets.ModelViewSet):
         tasks = list(queryset)
         # Rain takes care of due watering jobs: flag and rank them as upcoming.
         apply_rain_deferral(tasks, get_weather())
+        # Within an overdue rank, order by clock time (earlier first, timeless
+        # last) so the 07:30 feed sits above the 16:00 one. Stable sort, so this
+        # pre-pass survives the primary overdue sort below.
+        tasks.sort(key=lambda t: (t.due_time is None, t.due_time or time.min))
         tasks.sort(key=effective_days_overdue, reverse=True)
         if request.query_params.get("include") == "due":
             tasks = [task for task in tasks if effective_days_overdue(task) >= 0]
@@ -198,6 +202,14 @@ class CareTaskViewSet(viewsets.ModelViewSet):
         data = self.get_serializer(task).data
         data["log_entry_id"] = log.id
         return Response(data)
+
+    @action(detail=True, methods=["post"])
+    def uncomplete(self, request, pk=None):
+        """Undo the most recent completion (an accidental "Done"), restoring the
+        task's prior schedule. No-op if it was never completed."""
+        task = self.get_object()
+        task.uncomplete()
+        return Response(self.get_serializer(task).data)
 
 
 class LogEntryViewSet(viewsets.ModelViewSet):

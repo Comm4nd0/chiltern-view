@@ -32,6 +32,11 @@ function recurrenceLabel(task: CareTask): string {
   return `every ${task.recurrence_interval_days} days`
 }
 
+/** "07:30" from the API's "HH:MM:SS", or null when the task has no set time. */
+function timeLabel(task: CareTask): string | null {
+  return task.due_time ? task.due_time.slice(0, 5) : null
+}
+
 export default function CareTaskCard({
   task,
   onComplete,
@@ -44,7 +49,9 @@ export default function CareTaskCard({
   onEdit?: () => void
 }) {
   const color = statusColor(task.status)
-  const sub = [task.animal_name, recurrenceLabel(task)].filter(Boolean).join(' · ')
+  const sub = [task.animal_name, recurrenceLabel(task), timeLabel(task)]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <Card sx={{ display: 'flex', overflow: 'hidden' }}>

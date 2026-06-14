@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
@@ -142,11 +143,23 @@ class ApiClient {
     return CareTask.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  /// Undo an accidental "Done": restores the task's prior schedule.
+  Future<CareTask> uncompleteTask(int id) async {
+    final res = await _client.post(
+      _uri('/care-tasks/$id/uncomplete/'),
+      headers: _headers(json: true),
+      body: '{}',
+    );
+    _check(res);
+    return CareTask.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   Future<CareTask> createCareTask({
     required String name,
     int recurrenceIntervalDays = 7,
     int timesPerDay = 1,
     DateTime? dueDate,
+    TimeOfDay? dueTime,
     int? animal,
     int? assignee,
     String description = '',
@@ -159,6 +172,7 @@ class ApiClient {
         'recurrence_interval_days': recurrenceIntervalDays,
         'times_per_day': timesPerDay,
         'due_date': dueDate != null ? _ymd(dueDate) : null,
+        'due_time': dueTime != null ? _hm(dueTime) : null,
         'description': description,
         if (animal != null) 'animal': animal,
         if (assignee != null) 'assignee': assignee,
@@ -176,6 +190,7 @@ class ApiClient {
     required int recurrenceIntervalDays,
     int timesPerDay = 1,
     DateTime? dueDate,
+    TimeOfDay? dueTime,
     int? animal,
     int? assignee,
   }) async {
@@ -187,6 +202,7 @@ class ApiClient {
         'recurrence_interval_days': recurrenceIntervalDays,
         'times_per_day': timesPerDay,
         'due_date': dueDate != null ? _ymd(dueDate) : null, // null clears => repeats
+        'due_time': dueTime != null ? _hm(dueTime) : null, // null clears => anytime
         'animal': animal,
         'assignee': assignee,
       }),
@@ -468,4 +484,7 @@ class ApiClient {
 
   static String _ymd(DateTime d) =>
       '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  static String _hm(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 }

@@ -58,10 +58,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       await _api.completeTask(task.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Marked "${task.name}" done')),
+        SnackBar(
+          content: Text('Marked "${task.name}" done'),
+          action: SnackBarAction(label: 'Undo', onPressed: () => _undo(task)),
+        ),
       );
       _refresh();
       syncReminders(_api); // due date moved — refresh scheduled reminders
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
+  Future<void> _undo(CareTask task) async {
+    try {
+      await _api.uncompleteTask(task.id);
+      _refresh();
+      syncReminders(_api); // schedule restored — refresh reminders
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));

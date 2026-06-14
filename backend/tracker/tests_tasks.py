@@ -97,6 +97,104 @@ class TimesPerDayTests(APITestCase):
         self.assertEqual(res.data["status"], "due_today")
 
 
+class UndoCompletionTests(APITestCase):
+    """Undoing an accidental "Done" via the uncomplete action."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="marco", password="welly-boots-7")
+        self.person = Person.objects.create(name="Marco", user=self.user)
+        token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+    def test_uncomplete_reverts_a_fresh_completion(self):
+        task = CareTask.objects.create(name="Walk the dog", recurrence_interval_days=1)
+        task.mark_done()
+        self.assertEqual(task.last_completed, timezone.localdate())
+        self.assertTrue(task.uncomplete())
+        self.assertIsNone(task.last_completed)
+        self.assertEqual(task.times_done, 0)
+
+    def test_uncomplete_restores_the_previous_completion(self):
+        task = CareTask.objects.create(name="Walk the dog", recurrence_interval_days=1)
+        yesterday = timezone.localdate() - timedelta(days=1)
+        task.mark_done(on=yesterday)
+        task.mark_done()  # today
+        task.uncomplete()
+        self.assertEqual(task.last_completed, yesterday)
+        self.assertEqual(task.times_done, 1)
+
+    def test_uncomplete_steps_back_one_of_several_per_day(self):
+        task = CareTask.objects.create(
+            name="Feed the dog", recurrence_interval_days=1, times_per_day=4
+        )
+        for _ in range(3):
+            task.mark_done()
+        self.assertEqual(task.times_done_today, 3)
+        task.uncomplete()
+        self.assertEqual(task.times_done_today, 2)
+        self.assertEqual(task.next_due, timezone.localdate())
+
+    def test_uncomplete_revives_a_completed_one_off(self):
+        task = CareTask.objects.create(name="Vet visit", due_date=timezone.localdate())
+        task.mark_done()
+        self.assertFalse(task.active)
+        task.uncomplete()
+        self.assertTrue(task.active)
+        self.assertIsNone(task.last_completed)
+
+    def test_uncomplete_is_a_noop_when_never_done(self):
+        task = CareTask.objects.create(name="Walk the dog", recurrence_interval_days=1)
+        self.assertFalse(task.uncomplete())
+        self.assertIsNone(task.last_completed)
+
+    def test_uncomplete_endpoint(self):
+        task = CareTask.objects.create(name="Walk the dog", recurrence_interval_days=1)
+        self.client.post(f"/api/care-tasks/{task.id}/complete/")
+        res = self.client.post(f"/api/care-tasks/{task.id}/uncomplete/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data["times_done_today"], 0)
+        self.assertIsNone(res.data["last_completed"])
+
+
+class DueTimeTests(APITestCase):
+    """Clock-timed tasks (e.g. the 07:30 / 16:00 dog feeds)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="marco", password="welly-boots-7")
+        Person.objects.create(name="Marco", user=self.user)
+        token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+    def test_due_time_round_trips(self):
+        res = self.client.post(
+            "/api/care-tasks/",
+            {"name": "Feed the dog", "recurrence_interval_days": 1, "due_time": "07:30"},
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["due_time"], "07:30:00")
+
+    def test_due_time_forces_once_a_day(self):
+        res = self.client.post(
+            "/api/care-tasks/",
+            {
+                "name": "Feed the dog",
+                "recurrence_interval_days": 1,
+                "due_time": "07:30",
+                "times_per_day": 4,
+            },
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["times_per_day"], 1)
+
+    def test_timeless_task_has_null_due_time(self):
+        res = self.client.post(
+            "/api/care-tasks/",
+            {"name": "Collect the eggs", "recurrence_interval_days": 1},
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(res.data["due_time"])
+
+
 class AnimalTaskFilterTests(APITestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="claire", password="welly-boots-7")

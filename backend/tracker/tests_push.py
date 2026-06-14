@@ -1,4 +1,6 @@
 """Tests for web push: subscription endpoints and the daily reminder command."""
+import datetime as dt
+import json
 from datetime import timedelta
 from unittest.mock import Mock, patch
 
@@ -11,7 +13,14 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
-from .models import CareTask, Person, PushSubscription
+from .models import CareTask, Person, PushReminderLog, PushSubscription
+
+
+def noon_today(*args, **kwargs):
+    """A fixed local 'now' (12:00 today) so timed-task tests aren't wall-clock flaky.
+    Accepts/ignores args since patching timezone.localtime catches incidental calls.
+    Uses dt.date.today() (not timezone.localdate, which would recurse via localtime)."""
+    return timezone.make_aware(dt.datetime.combine(dt.date.today(), dt.time(12, 0)))
 
 SUB_JSON = {
     "endpoint": "https://push.example/abc",
@@ -146,3 +155,36 @@ class PushCommandTests(APITestCase):
         self.assertEqual(lonely_sub.last_sent_date, timezone.localdate())
         sent_to = [call.kwargs["subscription_info"]["endpoint"] for call in mock_push.call_args_list]
         self.assertNotIn("https://push.example/loner", sent_to)
+
+    def make_timed_task(self, due_time, name="Feed the dog"):
+        """A daily task due today, pinned to a clock time."""
+        return CareTask.objects.create(
+            name=name,
+            assignee=self.person,
+            recurrence_interval_days=1,
+            last_completed=timezone.localdate() - timedelta(days=1),  # due today
+            due_time=due_time,
+        )
+
+    @patch("tracker.management.commands.send_push_reminders.timezone.localtime", side_effect=noon_today)
+    @patch("tracker.management.commands.send_push_reminders.webpush")
+    def test_timed_task_pings_once_when_its_time_has_passed(self, mock_push, _now, _weather):
+        self.make_timed_task(dt.time(7, 30))  # 07:30, already past noon-fixed now
+        call_command("send_push_reminders")
+        titles = [json.loads(call.kwargs["data"])["title"] for call in mock_push.call_args_list]
+        self.assertIn("Time to: Feed the dog", titles)
+        self.assertNotIn("Tasks to do", titles)  # timed task isn't in the digest
+        self.assertEqual(PushReminderLog.objects.count(), 1)
+
+        # A second run the same day must not re-ping it.
+        mock_push.reset_mock()
+        call_command("send_push_reminders")
+        mock_push.assert_not_called()
+
+    @patch("tracker.management.commands.send_push_reminders.timezone.localtime", side_effect=noon_today)
+    @patch("tracker.management.commands.send_push_reminders.webpush")
+    def test_timed_task_waits_until_its_time(self, mock_push, _now, _weather):
+        self.make_timed_task(dt.time(16, 0))  # 16:00, still ahead of noon-fixed now
+        call_command("send_push_reminders")
+        mock_push.assert_not_called()
+        self.assertEqual(PushReminderLog.objects.count(), 0)

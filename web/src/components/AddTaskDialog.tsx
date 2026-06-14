@@ -44,6 +44,8 @@ export default function AddTaskDialog({
   const [name, setName] = useState(task?.name ?? '')
   const [days, setDays] = useState(String(task?.recurrence_interval_days ?? 7))
   const [timesPerDay, setTimesPerDay] = useState(String(task?.times_per_day ?? 1))
+  // "HH:MM:SS" from the API → the <input type=time> value "HH:MM"; '' = no time.
+  const [time, setTime] = useState(task?.due_time ? task.due_time.slice(0, 5) : '')
   const [repeats, setRepeats] = useState(task ? task.due_date == null : true)
   const [dueDate, setDueDate] = useState(task?.due_date ?? new Date().toISOString().slice(0, 10))
   const [assignee, setAssignee] = useState(
@@ -66,6 +68,7 @@ export default function AddTaskDialog({
       assignee: assignee ? Number(assignee) : null,
       animal: animal ? Number(animal) : null,
     }
+    const timeVal = time.trim() || null
     let payload
     if (repeats) {
       const n = Number(days)
@@ -73,18 +76,29 @@ export default function AddTaskDialog({
         setError('Enter a positive interval.')
         return
       }
-      const times = Number(timesPerDay)
-      if (!Number.isInteger(times) || times <= 0) {
-        setError('Times a day must be a positive number.')
-        return
+      // A clock-timed task happens once at that time; "times a day" only applies
+      // to timeless tasks.
+      let times = 1
+      if (!timeVal) {
+        times = Number(timesPerDay)
+        if (!Number.isInteger(times) || times <= 0) {
+          setError('Times a day must be a positive number.')
+          return
+        }
       }
-      payload = { ...base, recurrence_interval_days: n, times_per_day: times, due_date: null }
+      payload = {
+        ...base,
+        recurrence_interval_days: n,
+        times_per_day: times,
+        due_date: null,
+        due_time: timeVal,
+      }
     } else {
       if (!dueDate) {
         setError('Pick a due date.')
         return
       }
-      payload = { ...base, due_date: dueDate, times_per_day: 1 }
+      payload = { ...base, due_date: dueDate, times_per_day: 1, due_time: null }
     }
     try {
       if (editing) await updateTask.mutateAsync({ id: task.id, patch: payload })
@@ -131,23 +145,38 @@ export default function AddTaskDialog({
             <ToggleButton value="oneoff">One-off</ToggleButton>
           </ToggleButtonGroup>
           {repeats ? (
-            <Stack direction="row" spacing={2}>
-              <TextField
-                label="Repeat every (days)"
-                type="number"
-                value={days}
-                onChange={(e) => setDays(e.target.value)}
-                fullWidth
-              />
-              <TextField
-                label="Times a day"
-                type="number"
-                value={timesPerDay}
-                onChange={(e) => setTimesPerDay(e.target.value)}
-                helperText="e.g. 4 feeds a day"
-                fullWidth
-              />
-            </Stack>
+            <>
+              <Stack direction="row" spacing={2}>
+                <TextField
+                  label="Repeat every (days)"
+                  type="number"
+                  value={days}
+                  onChange={(e) => setDays(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  label="Time (optional)"
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  helperText="e.g. 07:30 to feed the dog"
+                  fullWidth
+                  slotProps={{ inputLabel: { shrink: true } }}
+                />
+              </Stack>
+              {/* A clock time means "once at that time", so times-a-day only shows
+                  for timeless tasks (e.g. collect the eggs, sometime today). */}
+              {!time.trim() && (
+                <TextField
+                  label="Times a day"
+                  type="number"
+                  value={timesPerDay}
+                  onChange={(e) => setTimesPerDay(e.target.value)}
+                  helperText="e.g. 4 feeds a day"
+                  fullWidth
+                />
+              )}
+            </>
           ) : (
             <TextField
               label="Due date"
