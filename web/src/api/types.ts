@@ -26,6 +26,9 @@ export interface CareTask {
   description: string
   animal: number | null
   animal_name: string | null
+  /** Animal type this task belongs to (e.g. 'chicken' — collect the eggs); '' if not type-level. */
+  species: string
+  species_display: string
   assignee: number | null
   assignee_name: string | null
   recurrence_interval_days: number

@@ -8,6 +8,8 @@ class CareTask {
   final String description;
   final int? animal;
   final String? animalName;
+  final String species; // animal type code (e.g. 'chicken'); '' if not type-level
+  final String speciesDisplay; // human label for the type; '' if none
   final int? assignee;
   final String? assigneeName;
   final int recurrenceIntervalDays;
@@ -29,6 +31,8 @@ class CareTask {
     required this.description,
     required this.animal,
     required this.animalName,
+    this.species = '',
+    this.speciesDisplay = '',
     required this.assignee,
     required this.assigneeName,
     required this.recurrenceIntervalDays,
@@ -51,6 +55,8 @@ class CareTask {
         description: json['description'] as String? ?? '',
         animal: json['animal'] as int?,
         animalName: json['animal_name'] as String?,
+        species: json['species'] as String? ?? '',
+        speciesDisplay: json['species_display'] as String? ?? '',
         assignee: json['assignee'] as int?,
         assigneeName: json['assignee_name'] as String?,
         recurrenceIntervalDays: json['recurrence_interval_days'] as int? ?? 0,

@@ -51,10 +51,25 @@ export default function AddTaskDialog({
   const [assignee, setAssignee] = useState(
     task?.assignee != null ? String(task.assignee) : myId != null ? String(myId) : '',
   )
-  const [animal, setAnimal] = useState(
-    task?.animal != null ? String(task.animal) : defaultAnimal != null ? String(defaultAnimal) : '',
+  // "Applies to" encodes whole-holding (''), an animal type ('type:<code>'), or
+  // an individual animal ('animal:<id>').
+  const [appliesTo, setAppliesTo] = useState(
+    task?.species
+      ? `type:${task.species}`
+      : task?.animal != null
+        ? `animal:${task.animal}`
+        : defaultAnimal != null
+          ? `animal:${defaultAnimal}`
+          : '',
   )
   const [error, setError] = useState<string | null>(null)
+
+  // Distinct animal types you keep, for the "Applies to" list (e.g. chickens).
+  const speciesTypes = (() => {
+    const seen = new Map<string, string>()
+    for (const a of animals.data ?? []) if (!seen.has(a.species)) seen.set(a.species, a.species_display)
+    return [...seen.entries()].map(([code, display]) => ({ code, display }))
+  })()
 
   const busy = createTask.isPending || updateTask.isPending || deleteTask.isPending
 
@@ -66,7 +81,8 @@ export default function AddTaskDialog({
     const base = {
       name: name.trim(),
       assignee: assignee ? Number(assignee) : null,
-      animal: animal ? Number(animal) : null,
+      animal: appliesTo.startsWith('animal:') ? Number(appliesTo.slice(7)) : null,
+      species: appliesTo.startsWith('type:') ? appliesTo.slice(5) : '',
     }
     const timeVal = time.trim() || null
     let payload
@@ -201,13 +217,19 @@ export default function AddTaskDialog({
           </TextField>
           <TextField
             select
-            label="Animal (optional)"
-            value={animal}
-            onChange={(e) => setAnimal(e.target.value)}
+            label="Applies to"
+            value={appliesTo}
+            onChange={(e) => setAppliesTo(e.target.value)}
+            helperText="A whole animal type (e.g. all chickens), one animal, or the holding"
           >
             <MenuItem value="">Whole holding</MenuItem>
+            {speciesTypes.map((s) => (
+              <MenuItem key={`type:${s.code}`} value={`type:${s.code}`}>
+                {s.display} (all)
+              </MenuItem>
+            ))}
             {(animals.data ?? []).map((a) => (
-              <MenuItem key={a.id} value={String(a.id)}>
+              <MenuItem key={`animal:${a.id}`} value={`animal:${a.id}`}>
                 {a.name}
               </MenuItem>
             ))}

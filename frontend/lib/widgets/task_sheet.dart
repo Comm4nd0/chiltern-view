@@ -28,7 +28,8 @@ class _TaskSheetState extends State<TaskSheet> {
   bool _repeats = true;
   DateTime _dueDate = DateTime.now();
   TimeOfDay? _dueTime; // null = anytime that day
-  int? _animalId;
+  // "Applies to": '' whole holding, 'type:<code>' an animal type, 'animal:<id>' one animal.
+  String? _appliesTo;
   int? _assigneeId;
   List<Animal> _animals = [];
   List<Person> _people = [];
@@ -48,14 +49,16 @@ class _TaskSheetState extends State<TaskSheet> {
       _interval.text = t.recurrenceIntervalDays.toString();
       _timesPerDay.text = t.timesPerDay.toString();
       _dueTime = t.dueTime;
-      _animalId = t.animal;
+      _appliesTo = t.species.isNotEmpty
+          ? 'type:${t.species}'
+          : (t.animal != null ? 'animal:${t.animal}' : null);
       _assigneeId = t.assignee;
       if (t.isOneOff) {
         _repeats = false;
         _dueDate = t.dueDate!;
       }
-    } else {
-      _animalId = widget.defaultAnimalId;
+    } else if (widget.defaultAnimalId != null) {
+      _appliesTo = 'animal:${widget.defaultAnimalId}';
     }
     _loadAnimals();
     _loadPeople();
@@ -134,6 +137,9 @@ class _TaskSheetState extends State<TaskSheet> {
     final dueTime = _repeats ? _dueTime : null;
     final timesPerDay = (_repeats && dueTime == null) ? int.parse(_timesPerDay.text.trim()) : 1;
     final dueDate = _repeats ? null : _dueDate;
+    final appliesTo = _appliesTo ?? '';
+    final animalId = appliesTo.startsWith('animal:') ? int.tryParse(appliesTo.substring(7)) : null;
+    final speciesCode = appliesTo.startsWith('type:') ? appliesTo.substring(5) : '';
     try {
       if (_editing) {
         await widget.api.updateCareTask(
@@ -143,7 +149,8 @@ class _TaskSheetState extends State<TaskSheet> {
           timesPerDay: timesPerDay,
           dueDate: dueDate,
           dueTime: dueTime,
-          animal: _animalId,
+          animal: animalId,
+          species: speciesCode,
           assignee: _assigneeId,
         );
       } else {
@@ -153,7 +160,8 @@ class _TaskSheetState extends State<TaskSheet> {
           timesPerDay: timesPerDay,
           dueDate: dueDate,
           dueTime: dueTime,
-          animal: _animalId,
+          animal: animalId,
+          species: speciesCode,
           assignee: _assigneeId,
         );
       }
@@ -188,6 +196,18 @@ class _TaskSheetState extends State<TaskSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
     final busy = _saving || _deleting;
+    // Distinct animal types you keep, for the "Applies to" list (e.g. chickens).
+    final speciesTypes = <String, String>{};
+    for (final a in _animals) {
+      speciesTypes.putIfAbsent(a.species, () => a.speciesDisplay);
+    }
+    final appliesToValues = <String?>{
+      null,
+      for (final code in speciesTypes.keys) 'type:$code',
+      for (final a in _animals) 'animal:${a.id}',
+    };
+    // Drop a value that isn't selectable (e.g. a retired animal) back to none.
+    final appliesToValue = appliesToValues.contains(_appliesTo) ? _appliesTo : null;
     return Padding(
       padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
       child: Form(
@@ -298,23 +318,28 @@ class _TaskSheetState extends State<TaskSheet> {
               ),
             const SizedBox(height: 12),
             if (_animalsLoaded)
-              DropdownButtonFormField<int?>(
-                initialValue: _validId(_animalId, _animals.map((a) => a.id)),
+              DropdownButtonFormField<String?>(
+                initialValue: appliesToValue,
+                isExpanded: true,
                 decoration: const InputDecoration(
-                  labelText: 'Animal (optional)',
+                  labelText: 'Applies to',
+                  helperText: 'A whole animal type (e.g. all chickens), one animal, or the holding',
                   border: OutlineInputBorder(),
                 ),
                 items: [
-                  const DropdownMenuItem<int?>(value: null, child: Text('Whole holding')),
+                  const DropdownMenuItem<String?>(value: null, child: Text('Whole holding')),
+                  for (final e in speciesTypes.entries)
+                    DropdownMenuItem<String?>(
+                        value: 'type:${e.key}', child: Text('${e.value} (all)')),
                   for (final a in _animals)
-                    DropdownMenuItem<int?>(value: a.id, child: Text(a.name)),
+                    DropdownMenuItem<String?>(value: 'animal:${a.id}', child: Text(a.name)),
                 ],
-                onChanged: (v) => setState(() => _animalId = v),
+                onChanged: (v) => setState(() => _appliesTo = v),
               )
             else
               const InputDecorator(
                 decoration:
-                    InputDecoration(labelText: 'Animal (optional)', border: OutlineInputBorder()),
+                    InputDecoration(labelText: 'Applies to', border: OutlineInputBorder()),
                 child: Text('Loading…'),
               ),
             const SizedBox(height: 16),

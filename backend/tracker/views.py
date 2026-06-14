@@ -174,10 +174,13 @@ class CareTaskViewSet(viewsets.ModelViewSet):
             if animal is None:
                 queryset = queryset.none()
             else:
-                # Species-routine auto keys are exactly "animal:<species>:<job>";
-                # per-animal keys carry the pk too, so they only match their own FK.
+                # An animal's page shows its own tasks plus its whole type's
+                # (e.g. every hen shows "collect the eggs", assigned to chickens).
+                # The auto_key regex is a fallback for any legacy species-routine
+                # task whose species field wasn't backfilled.
                 queryset = queryset.filter(
                     Q(animal_id=animal.pk)
+                    | Q(species=animal.species)
                     | Q(auto_key__regex=rf"^animal:{animal.species}:[^:]+$")
                 )
         tasks = list(queryset)

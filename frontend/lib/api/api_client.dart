@@ -161,6 +161,7 @@ class ApiClient {
     DateTime? dueDate,
     TimeOfDay? dueTime,
     int? animal,
+    String species = '',
     int? assignee,
     String description = '',
   }) async {
@@ -173,6 +174,7 @@ class ApiClient {
         'times_per_day': timesPerDay,
         'due_date': dueDate != null ? _ymd(dueDate) : null,
         'due_time': dueTime != null ? _hm(dueTime) : null,
+        'species': species,
         'description': description,
         if (animal != null) 'animal': animal,
         if (assignee != null) 'assignee': assignee,
@@ -192,6 +194,7 @@ class ApiClient {
     DateTime? dueDate,
     TimeOfDay? dueTime,
     int? animal,
+    String species = '',
     int? assignee,
   }) async {
     final res = await _client.patch(
@@ -203,7 +206,8 @@ class ApiClient {
         'times_per_day': timesPerDay,
         'due_date': dueDate != null ? _ymd(dueDate) : null, // null clears => repeats
         'due_time': dueTime != null ? _hm(dueTime) : null, // null clears => anytime
-        'animal': animal,
+        'animal': animal, // null clears the individual link
+        'species': species, // '' clears the type link
         'assignee': assignee,
       }),
     );

@@ -244,3 +244,30 @@ class AnimalTaskFilterTests(APITestCase):
         task = CareTask.objects.get(auto_key="animal:chicken:eggs")
         self.assertEqual(task.name, "Check for & collect eggs")
         self.assertEqual(task.recurrence_interval_days, 1)
+        # The egg check belongs to the chicken type, not one hen.
+        self.assertEqual(task.species, "chicken")
+        self.assertIsNone(task.animal)
+
+    def test_species_task_shows_on_each_animal_of_that_type(self):
+        margo = Animal.objects.create(name="Margo", species="chicken")
+        peggy = Animal.objects.create(name="Peggy", species="chicken")
+        bella = Animal.objects.create(name="Bella", species="dog")
+        task = CareTask.objects.create(
+            name="Dust the hens for mites", species="chicken", recurrence_interval_days=14
+        )
+        for hen in (margo, peggy):
+            res = self.client.get("/api/care-tasks/dashboard/", {"animal": hen.id})
+            self.assertIn(task.name, self._names(res))
+        res = self.client.get("/api/care-tasks/dashboard/", {"animal": bella.id})
+        self.assertNotIn(task.name, self._names(res))
+
+    def test_create_task_assigned_to_species_via_api(self):
+        Animal.objects.create(name="Margo", species="chicken")
+        res = self.client.post(
+            "/api/care-tasks/",
+            {"name": "Scrub the waterers", "species": "chicken", "recurrence_interval_days": 7},
+        )
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(res.data["species"], "chicken")
+        self.assertEqual(res.data["species_display"], "Chicken")
+        self.assertIsNone(res.data["animal"])

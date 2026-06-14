@@ -60,6 +60,8 @@ export interface CreateTaskInput {
   due_time?: string | null
   description?: string
   animal?: number | null
+  /** Assign to a whole animal type (species code, e.g. 'chicken'); '' clears it. */
+  species?: string
   assignee?: number | null
 }
 

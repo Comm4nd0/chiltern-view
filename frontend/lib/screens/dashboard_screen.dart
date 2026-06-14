@@ -29,8 +29,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Default to "my" tasks if this device has been assigned a person.
-    _filter = AppConfig.myPersonId?.toString();
+    // Default to everyone's tasks; the filter bar switches to a person/unassigned.
+    _filter = null;
     _future = _api.dashboard(assignee: _filter);
     _loadPeople();
   }

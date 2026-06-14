@@ -86,6 +86,16 @@ class CareTask(models.Model):
         related_name="care_tasks",
         help_text="Leave blank for whole-holding tasks (e.g. 'clean the coop').",
     )
+    species = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        db_index=True,
+        choices=Animal.Species.choices,
+        help_text="Assign to a whole animal type (e.g. all chickens — collecting "
+        "the eggs) rather than one individual. Leave blank for a single-animal "
+        "(see `animal`) or whole-holding job.",
+    )
     assignee = models.ForeignKey(
         Person,
         null=True,

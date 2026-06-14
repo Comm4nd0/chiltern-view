@@ -58,8 +58,10 @@ class CareTaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppTheme.statusColor(task.status);
+    // What it's about: a named animal, else its animal type (e.g. all chickens).
+    final subject = task.animalName ?? (task.speciesDisplay.isNotEmpty ? task.speciesDisplay : null);
     final subtitle = <String>[
-      if (task.animalName != null) task.animalName!,
+      if (subject != null) subject,
       task.recurrenceLabel,
       if (task.dueTimeLabel != null) task.dueTimeLabel!,
     ].join(' · ');

@@ -24,6 +24,7 @@ class AnimalSerializer(serializers.ModelSerializer):
 
 class CareTaskSerializer(serializers.ModelSerializer):
     animal_name = serializers.CharField(source="animal.name", read_only=True, default=None)
+    species_display = serializers.CharField(source="get_species_display", read_only=True, default="")
     assignee_name = serializers.CharField(source="assignee.name", read_only=True, default=None)
     # Computed scheduling fields the dashboard ranks on.
     next_due = serializers.DateField(read_only=True)
@@ -38,6 +39,7 @@ class CareTaskSerializer(serializers.ModelSerializer):
         model = CareTask
         fields = [
             "id", "name", "description", "animal", "animal_name",
+            "species", "species_display",
             "assignee", "assignee_name",
             "recurrence_interval_days", "times_per_day", "times_done_today",
             "last_completed", "due_date", "due_time", "auto_key", "active",

@@ -49,9 +49,9 @@ export default function CareTaskCard({
   onEdit?: () => void
 }) {
   const color = statusColor(task.status)
-  const sub = [task.animal_name, recurrenceLabel(task), timeLabel(task)]
-    .filter(Boolean)
-    .join(' · ')
+  // What it's about: a named animal, else its animal type (e.g. all chickens).
+  const subject = task.animal_name || task.species_display || null
+  const sub = [subject, recurrenceLabel(task), timeLabel(task)].filter(Boolean).join(' · ')
 
   return (
     <Card sx={{ display: 'flex', overflow: 'hidden' }}>

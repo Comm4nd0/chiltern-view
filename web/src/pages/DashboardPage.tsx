@@ -11,7 +11,8 @@ import type { CareTask } from '../api/types'
 export default function DashboardPage() {
   const myId = useMyPersonId()
   const people = usePeople()
-  const [filter, setFilter] = useState<string | undefined>(myId != null ? String(myId) : undefined)
+  // Default to everyone's tasks; the chips below switch to a person or unassigned.
+  const [filter, setFilter] = useState<string | undefined>(undefined)
   const dashboard = useDashboard(filter)
   const complete = useCompleteTask()
   const uncomplete = useUncompleteTask()

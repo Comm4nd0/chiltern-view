@@ -122,8 +122,11 @@ def animal_care_specs(animal):
     routine = ANIMAL_CARE.get(animal.species)
     if routine:
         prefix = f"animal:{animal.species}"
+        # Known-species jobs belong to the whole type (all the hens), so they carry
+        # a ``species`` rather than an individual ``animal`` link.
         return [
-            {"auto_key": f"{prefix}:{key}", "name": name, "interval_days": interval}
+            {"auto_key": f"{prefix}:{key}", "name": name, "interval_days": interval,
+             "species": animal.species}
             for key, name, interval in routine
         ]
     prefix = f"animal:{animal.species}:{animal.pk}"

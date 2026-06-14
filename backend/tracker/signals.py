@@ -29,6 +29,7 @@ def apply_care_specs(specs):
                 "recurrence_interval_days": spec.get("interval_days", 7),
                 "due_date": spec.get("due_date"),
                 "animal": spec.get("animal"),
+                "species": spec.get("species", ""),
             },
         )
         if was_created:
