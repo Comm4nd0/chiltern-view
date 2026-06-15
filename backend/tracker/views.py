@@ -325,6 +325,9 @@ class CropViewSet(viewsets.ModelViewSet):
                 "stage": crop.current_stage,
                 "progress": round(crop.progress * 100),
                 "estimated_harvest": crop.estimated_harvest,
+                # The full growth timeline (label + date per milestone) so the
+                # dashboards can date each stage, mirroring the web/mobile cards.
+                "stages": crop.stages,
             }
             for crop in crops
         ]

@@ -136,6 +136,10 @@ class CropLifecycleTests(APITestCase):
         self.assertIn("stage", card)
         self.assertIn("progress", card)
         self.assertIn("estimated_harvest", card)
+        # Each milestone carries its label and projected date for the timeline.
+        self.assertEqual(card["stages"][0]["label"], "Planted")
+        self.assertEqual(card["stages"][0]["date"], crop.planted_on)
+        self.assertEqual(card["stages"][-1]["label"], "Ready to harvest")
 
     def test_delete_removes_auto_reminders(self):
         crop = self.make_crop()
