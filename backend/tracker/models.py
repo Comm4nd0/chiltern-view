@@ -218,13 +218,14 @@ class CareTask(models.Model):
             return "due_today"
         return "upcoming"
 
-    def mark_done(self, on=None, note=""):
+    def mark_done(self, on=None, note="", by=None):
         """Record completion: stamp last_completed and write a log entry.
 
         A recurring task reschedules off the new last_completed; a one-off task is
         closed out (deactivated) so it drops off the list once done. A several-
         times-a-day task counts completions and stays due until the day's quota
-        is met.
+        is met. ``by`` is the Person who did it — recorded on the log entry so the
+        activity feed can show who completed each task.
         """
         on = on or timezone.localdate()
         if not self.is_one_off and self.times_per_day > 1 and self.last_completed == on:
@@ -252,6 +253,7 @@ class CareTask(models.Model):
             entry_type=LogEntry.EntryType.TASK_COMPLETED,
             note=note or default_note,
             occurred_on=self.last_completed,
+            created_by=by,
         )
 
     def uncomplete(self):

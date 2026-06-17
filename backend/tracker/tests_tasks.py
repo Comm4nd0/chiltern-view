@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
-from .models import Animal, CareTask, Person
+from .models import Animal, CareTask, LogEntry, Person
 
 
 class TimesPerDayTests(APITestCase):
@@ -318,3 +318,21 @@ class SnoozeTests(APITestCase):
         self.client.post(f"/api/care-tasks/{task.id}/snooze/", {"days": 1}, format="json")
         task.refresh_from_db()
         self.assertEqual(task.next_due, future_due)
+
+
+class CompletionActorTests(APITestCase):
+    """Completing a task records who did it, for the activity feed."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="claire", password="welly-boots-7")
+        self.person = Person.objects.create(name="Claire", user=self.user)
+        token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+    def test_completion_logs_actor(self):
+        task = CareTask.objects.create(name="Feed the goats", recurrence_interval_days=1)
+        res = self.client.post(f"/api/care-tasks/{task.id}/complete/")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        entry = LogEntry.objects.get(id=res.data["log_entry_id"])
+        self.assertEqual(entry.created_by, self.person)
+        self.assertEqual(entry.created_by.name, "Claire")

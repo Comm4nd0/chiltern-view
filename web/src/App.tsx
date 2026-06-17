@@ -18,6 +18,7 @@ import AnimalsPage from './pages/AnimalsPage'
 import AnimalDetailPage from './pages/AnimalDetailPage'
 import EggLogPage from './pages/EggLogPage'
 import SettingsPage from './pages/SettingsPage'
+import ActivityPage from './pages/ActivityPage'
 import LoginPage from './pages/LoginPage'
 import { useAuth } from './api/auth'
 
@@ -34,6 +35,7 @@ const titles: Record<string, string> = {
   '/crops': 'Crops',
   '/animals': 'Animals',
   '/eggs': 'Eggs',
+  '/activity': 'Activity',
   '/settings': 'Settings',
 }
 
@@ -88,6 +90,7 @@ export default function App() {
           <Route path="/animals" element={<AnimalsPage />} />
           <Route path="/animals/:id" element={<AnimalDetailPage />} />
           <Route path="/eggs" element={<EggLogPage />} />
+          <Route path="/activity" element={<ActivityPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Container>

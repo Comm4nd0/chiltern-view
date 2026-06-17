@@ -221,7 +221,9 @@ class CareTaskViewSet(viewsets.ModelViewSet):
         """Mark a task done. Optional body: {"date": "YYYY-MM-DD", "note": "..."}."""
         task = self.get_object()
         completed_on = parse_date(request.data.get("date", "") or "")
-        log = task.mark_done(on=completed_on, note=request.data.get("note", ""))
+        log = task.mark_done(
+            on=completed_on, note=request.data.get("note", ""), by=person_for(request.user)
+        )
         data = self.get_serializer(task).data
         data["log_entry_id"] = log.id
         return Response(data)

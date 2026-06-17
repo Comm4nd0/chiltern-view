@@ -235,6 +235,17 @@ export function useHarvestCrop() {
   )
 }
 
+/** The whole-holding activity feed (every journal entry incl. task completions),
+ * newest first, loading further pages on demand. */
+export function useActivityFeed() {
+  return useInfiniteQuery({
+    queryKey: ['activity-feed'],
+    queryFn: ({ pageParam }) => api.logEntries({ page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (last, pages) => (last.next ? pages.length + 1 : undefined),
+  })
+}
+
 /** An animal's journal, newest first, loading further pages on demand. */
 export function useAnimalLog(animalId: number, types?: string) {
   return useInfiniteQuery({

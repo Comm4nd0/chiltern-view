@@ -280,7 +280,12 @@ export default function OverviewPage() {
               <CardContent>
                 <Stack direction="row" alignItems="center" spacing={1.5} sx={{ mb: 0.5 }}>
                   <IconTile icon={Notebook} color="#AF52DE" />
-                  <Typography variant="h6">Recent notes</Typography>
+                  <Typography variant="h6" sx={{ flex: 1 }}>
+                    Recent notes
+                  </Typography>
+                  <Button size="small" onClick={() => navigate('/activity')}>
+                    See all
+                  </Button>
                 </Stack>
                 <Stack divider={<Divider />}>
                   {data.activity.map((entry) => (

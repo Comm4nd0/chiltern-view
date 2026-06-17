@@ -8,6 +8,7 @@ import '../services/notification_service.dart';
 import '../theme.dart';
 import '../widgets/async_view.dart';
 import '../widgets/care_task_card.dart'; // AssigneeAvatar
+import 'activity_screen.dart';
 import 'animal_detail_screen.dart';
 import 'egg_log_screen.dart';
 
@@ -459,7 +460,18 @@ class _OverviewScreenState extends State<OverviewScreen> {
               children: [
                 _IconTile(PhosphorIcons.notebook(PhosphorIconsStyle.fill), _purple),
                 const SizedBox(width: 12),
-                Text('Recent notes', style: Theme.of(context).textTheme.titleLarge),
+                Expanded(
+                  child: Text('Recent notes', style: Theme.of(context).textTheme.titleLarge),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    await Navigator.of(context).push(MaterialPageRoute<void>(
+                      builder: (_) => const ActivityScreen(),
+                    ));
+                    _refresh();
+                  },
+                  child: const Text('See all'),
+                ),
               ],
             ),
             const SizedBox(height: 8),
