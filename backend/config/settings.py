@@ -21,7 +21,9 @@ def env_list(name, default=""):
 
 # --- Core -------------------------------------------------------------------
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-insecure-change-me")
-DEBUG = env_bool("DJANGO_DEBUG", True)
+# Default OFF: a missing/typo'd env var must never leave DEBUG on in production
+# (it would leak tracebacks and settings). Local dev sets DJANGO_DEBUG=True.
+DEBUG = env_bool("DJANGO_DEBUG", False)
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*" if DEBUG else "")
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["*"]
@@ -129,8 +131,13 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
+    # The API is internet-facing (via Caddy), so it is locked down by default:
+    # every endpoint needs a token except the few that opt out with AllowAny
+    # (health probe, login). Clients send `Authorization: Token <key>` and drop
+    # to the login screen on a 401. Home Assistant authenticates with a token too
+    # — see docs/HOME_ASSISTANT.md.
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
+        "rest_framework.permissions.IsAuthenticated",
     ],
 }
 
@@ -163,3 +170,22 @@ VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "admin@example.com")
 # Local hour (Europe/London) after which the daily reminder push goes out —
 # mirrors the phone app's default 8am digest.
 PUSH_REMINDER_HOUR = int(os.environ.get("PUSH_REMINDER_HOUR", "8"))
+
+# --- HTTPS hardening --------------------------------------------------------
+# Caddy terminates TLS and reverse-proxies plain HTTP to the container, so trust
+# its X-Forwarded-Proto to know the original request was HTTPS.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# Opt-in (DJANGO_SECURE_HTTPS=True) once the site is reachable only over HTTPS:
+# redirect HTTP→HTTPS, mark cookies secure, and turn on HSTS. Kept off by default
+# so the in-container healthcheck and direct-LAN HTTP access keep working until
+# the deployment is ready for it.
+SECURE_HTTPS = env_bool("DJANGO_SECURE_HTTPS", False)
+if SECURE_HTTPS:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", str(60 * 60 * 24 * 7)))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    # The Docker healthcheck curls http://localhost:8000/ — let it through.
+    SECURE_REDIRECT_EXEMPT = [r"^api/health/?$"]

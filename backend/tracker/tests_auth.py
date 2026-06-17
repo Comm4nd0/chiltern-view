@@ -18,9 +18,23 @@ class AuthTests(APITestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
     def test_endpoints_require_auth(self):
-        for path in ("/api/animals/", "/api/care-tasks/", "/api/overview/", "/api/auth/me/"):
+        # Includes the endpoints Home Assistant reads (overview, crop board): the
+        # API is internet-facing, so HA authenticates with a token like any client.
+        for path in (
+            "/api/animals/",
+            "/api/care-tasks/",
+            "/api/overview/",
+            "/api/crops/board/",
+            "/api/egg-records/",
+            "/api/auth/me/",
+        ):
             res = self.client.get(path)
             self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED, path)
+
+    def test_writes_require_auth(self):
+        """The HA add-egg / complete-task write commands need a token too."""
+        res = self.client.post("/api/egg-records/increment/", {"count": 1})
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_login_returns_token_and_linked_person(self):
         res = self.client.post(

@@ -73,7 +73,7 @@ def overview(request):
     ]
 
     # --- Animals ---
-    animals = Animal.objects.filter(active=True)
+    animals = list(Animal.objects.filter(active=True))
     by_species = {}
     for animal in animals:
         label = animal.get_species_display()
@@ -121,7 +121,7 @@ def overview(request):
                 "per_person": per_person,
                 "top": top,
             },
-            "animals": {"total": animals.count(), "by_species": by_species},
+            "animals": {"total": len(animals), "by_species": by_species},
             "crops": {"growing": len(growing), "next_harvest": next_harvest},
             "eggs": {"today": eggs_today, "this_week": eggs_week},
             "activity": activity,

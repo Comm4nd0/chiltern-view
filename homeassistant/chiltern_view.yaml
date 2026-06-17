@@ -15,15 +15,20 @@
 #   - https://chilternview.lumatechsolutions.co.uk   (public, via Caddy → nginx)
 #   - http://<luma001-ip>:8007                       (LAN, via the web nginx)
 #   - http://<luma001-ip>:8009                       (LAN, straight to the backend)
-# The API is currently open (no login), so no auth header is needed. If you ever
-# re-enable token auth, add `headers: { Authorization: "Token <key>" }` to each
-# `rest:` resource and `rest_command:` below.
+#
+# AUTH: the API requires a login token. Create a service account in Django admin,
+# copy its token, and add it to <ha-config>/secrets.yaml:
+#     chiltern_view_token: "Token abcdef0123456789..."   # note the "Token " prefix
+# It's referenced as `!secret chiltern_view_token` on every resource and command
+# below. See docs/HOME_ASSISTANT.md for the full walkthrough.
 
 rest:
   # One poll of the overview endpoint feeds several sensors (same as the app's
   # front page does with a single request).
   - resource: https://chilternview.lumatechsolutions.co.uk/api/overview/
     scan_interval: 300
+    headers:
+      Authorization: !secret chiltern_view_token
     sensor:
       - name: "Chiltern eggs today"
         unique_id: chiltern_eggs_today
@@ -112,6 +117,8 @@ rest:
   # Growing crops with their stage/progress, for the crop-stage card.
   - resource: https://chilternview.lumatechsolutions.co.uk/api/crops/board/
     scan_interval: 600
+    headers:
+      Authorization: !secret chiltern_view_token
     sensor:
       - name: "Chiltern crops"
         unique_id: chiltern_crops
@@ -128,6 +135,8 @@ rest_command:
     url: https://chilternview.lumatechsolutions.co.uk/api/egg-records/increment/
     method: POST
     content_type: "application/json"
+    headers:
+      Authorization: !secret chiltern_view_token
     payload: >-
       {"count": {{ count | default(1) }}{% if source is defined %}, "source": "{{ source }}"{% endif %}}
 
@@ -135,4 +144,6 @@ rest_command:
     url: "https://chilternview.lumatechsolutions.co.uk/api/care-tasks/{{ task_id }}/complete/"
     method: POST
     content_type: "application/json"
+    headers:
+      Authorization: !secret chiltern_view_token
     payload: "{}"

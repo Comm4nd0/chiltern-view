@@ -18,6 +18,8 @@ import AnimalsPage from './pages/AnimalsPage'
 import AnimalDetailPage from './pages/AnimalDetailPage'
 import EggLogPage from './pages/EggLogPage'
 import SettingsPage from './pages/SettingsPage'
+import LoginPage from './pages/LoginPage'
+import { useAuth } from './api/auth'
 
 const tabs = [
   { label: 'Home', path: '/', icon: House },
@@ -36,6 +38,7 @@ const titles: Record<string, string> = {
 }
 
 export default function App() {
+  const { token } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   // Nested pages (e.g. /animals/3) keep their section's tab highlighted.
@@ -44,6 +47,9 @@ export default function App() {
   )
   const title =
     titles[location.pathname] ?? (location.pathname.startsWith('/animals/') ? 'Animal' : 'Chiltern View')
+
+  // Not signed in → the login screen replaces the whole shell.
+  if (!token) return <LoginPage />
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>

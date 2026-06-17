@@ -23,15 +23,27 @@ and use it everywhere in `chiltern_view.yaml`:
 - `http://<luma001-ip>:8007` — LAN, via the web nginx.
 - `http://<luma001-ip>:8009` — LAN, straight to the backend.
 
-The API is currently **open** (no login — the gate was dropped for the kiosk),
-so no credentials are needed. Anyone who can reach the URL can read and write,
-which is fine on a trusted LAN. If you re-enable token auth later, add a header
-to each `rest:` resource and `rest_command:`:
+The API requires a **login token** (it's internet-facing via Caddy, so it isn't
+left open). Home Assistant authenticates exactly like the web and mobile apps:
+it sends an `Authorization: Token <key>` header, already wired onto every
+`rest:` resource and `rest_command:` in `chiltern_view.yaml` via
+`!secret chiltern_view_token`.
 
-```yaml
-headers:
-  Authorization: "Token <your-key>"
-```
+To set it up:
+
+1. **Create a token.** In Django admin (`/admin/`), add a user for Home Assistant
+   (e.g. `home-assistant`) — or reuse an existing account — then create a token
+   for it under **Auth Token → Tokens**. (Tip: keep it a non-staff account so the
+   kiosk can't reach the admin site.)
+2. **Store it in Home Assistant.** Add the key to `<ha-config>/secrets.yaml`,
+   keeping the literal `Token ` prefix:
+
+   ```yaml
+   chiltern_view_token: "Token abcdef0123456789abcdef0123456789abcdef01"
+   ```
+
+3. Restart Home Assistant. If a sensor shows `unknown` or a command 404s/401s,
+   the token is usually missing the `Token ` prefix or the account was deleted.
 
 ## Setup
 
