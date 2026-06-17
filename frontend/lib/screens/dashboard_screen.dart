@@ -82,6 +82,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  Future<void> _snooze(CareTask task) async {
+    try {
+      await _api.snoozeTask(task.id, days: 1);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Snoozed "${task.name}" to tomorrow')),
+      );
+      _refresh();
+      syncReminders(_api); // due date moved — refresh scheduled reminders
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+    }
+  }
+
   Future<void> _addTask() async {
     final created = await showModalBottomSheet<bool>(
       context: context,
@@ -146,6 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       task: tasks[i],
                       onComplete: () => _complete(tasks[i]),
                       onEdit: () => _editTask(tasks[i]),
+                      onSnooze: () => _snooze(tasks[i]),
                     ),
                   );
                 },

@@ -42,11 +42,13 @@ export default function CareTaskCard({
   onComplete,
   completing,
   onEdit,
+  onSnooze,
 }: {
   task: CareTask
   onComplete: () => void
   completing: boolean
   onEdit?: () => void
+  onSnooze?: () => void
 }) {
   const color = statusColor(task.status)
   // What it's about: a named animal, else its animal type (e.g. all chickens).
@@ -98,7 +100,7 @@ export default function CareTaskCard({
           {task.assignee_name && <AssigneeAvatar name={task.assignee_name} />}
         </Stack>
       </CardContent>
-      <Box sx={{ display: 'flex', alignItems: 'center', pr: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 0.5, pr: 1 }}>
         <Button
           onClick={onComplete}
           disabled={completing}
@@ -108,6 +110,11 @@ export default function CareTaskCard({
         >
           Done
         </Button>
+        {onSnooze && task.status !== 'upcoming' && (
+          <Button onClick={onSnooze} disabled={completing} size="small" color="inherit">
+            Later
+          </Button>
+        )}
       </Box>
     </Card>
   )

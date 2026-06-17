@@ -157,6 +157,17 @@ class ApiClient {
     return CareTask.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  /// "Remind me later": hold the task back by [days] days (default tomorrow).
+  Future<CareTask> snoozeTask(int id, {int days = 1}) async {
+    final res = await _client.post(
+      _uri('/care-tasks/$id/snooze/'),
+      headers: _headers(json: true),
+      body: jsonEncode({'days': days}),
+    );
+    _check(res);
+    return CareTask.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
   Future<CareTask> createCareTask({
     required String name,
     int recurrenceIntervalDays = 7,

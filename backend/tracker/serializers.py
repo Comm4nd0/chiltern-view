@@ -42,7 +42,7 @@ class CareTaskSerializer(serializers.ModelSerializer):
             "species", "species_display",
             "assignee", "assignee_name",
             "recurrence_interval_days", "times_per_day", "times_done_today",
-            "last_completed", "due_date", "due_time", "auto_key", "active",
+            "last_completed", "due_date", "due_time", "snoozed_until", "auto_key", "active",
             "next_due", "days_overdue", "status",
             "rain_deferred", "weather_note",
             "created_at", "updated_at",

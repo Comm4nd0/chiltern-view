@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react'
 import { Box, Button, Chip, Fab, Snackbar, Stack, Typography } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { useCompleteTask, useDashboard, usePeople, useUncompleteTask } from '../api/hooks'
+import {
+  useCompleteTask,
+  useDashboard,
+  usePeople,
+  useSnoozeTask,
+  useUncompleteTask,
+} from '../api/hooks'
 import { useMyPersonId } from '../config'
 import QueryBoundary from '../components/QueryBoundary'
 import CareTaskCard from '../components/CareTaskCard'
@@ -16,6 +22,7 @@ export default function DashboardPage() {
   const dashboard = useDashboard(filter)
   const complete = useCompleteTask()
   const uncomplete = useUncompleteTask()
+  const snooze = useSnoozeTask()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<CareTask | null>(null)
   const [snack, setSnack] = useState<{ msg: string; undoId: number | null } | null>(null)
@@ -50,6 +57,15 @@ export default function DashboardPage() {
     if (id != null) await uncomplete.mutateAsync(id)
   }
 
+  const onSnooze = async (id: number, name: string) => {
+    try {
+      await snooze.mutateAsync({ id, days: 1 })
+      setSnack({ msg: `Snoozed "${name}" to tomorrow`, undoId: null })
+    } catch (e) {
+      setSnack({ msg: e instanceof Error ? e.message : 'Failed', undoId: null })
+    }
+  }
+
   return (
     <Box>
       <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1, mb: 1 }}>
@@ -79,6 +95,7 @@ export default function DashboardPage() {
                   completing={completingId === t.id}
                   onComplete={() => onComplete(t.id, t.name)}
                   onEdit={() => setEditing(t)}
+                  onSnooze={() => onSnooze(t.id, t.name)}
                 />
               ))}
             </Stack>

@@ -40,6 +40,8 @@ export interface CareTask {
   due_date: string | null
   /** Clock time the task is due / its reminder fires ("HH:MM:SS"); null = anytime that day. */
   due_time: string | null
+  /** "Remind me later" hold date; null when not snoozed. */
+  snoozed_until: string | null
   active: boolean
   next_due: string
   days_overdue: number

@@ -47,12 +47,14 @@ class CareTaskCard extends StatelessWidget {
   final CareTask task;
   final Future<void> Function() onComplete;
   final VoidCallback? onEdit;
+  final VoidCallback? onSnooze;
 
   const CareTaskCard({
     super.key,
     required this.task,
     required this.onComplete,
     this.onEdit,
+    this.onSnooze,
   });
 
   @override
@@ -148,12 +150,17 @@ class CareTaskCard extends StatelessWidget {
             ),
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                child: FilledButton.tonalIcon(
-                  onPressed: onComplete,
-                  icon: Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 16),
-                  label: const Text('Done'),
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FilledButton.tonalIcon(
+                    onPressed: onComplete,
+                    icon: Icon(PhosphorIcons.check(PhosphorIconsStyle.bold), size: 16),
+                    label: const Text('Done'),
+                  ),
+                  if (onSnooze != null && task.status != 'upcoming')
+                    TextButton(onPressed: onSnooze, child: const Text('Later')),
+                ],
               ),
             ),
           ],

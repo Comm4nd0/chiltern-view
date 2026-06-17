@@ -142,6 +142,12 @@ class CareTask(models.Model):
         help_text="Optional clock time the task is due / its reminder fires, "
         "e.g. 07:30 to feed the dog. Blank = anytime that day (e.g. collect the eggs).",
     )
+    snoozed_until = models.DateField(
+        null=True,
+        blank=True,
+        help_text="'Remind me later': hold the task back until this date. "
+        "Cleared automatically when the task is completed.",
+    )
     auto_key = models.CharField(
         max_length=120,
         blank=True,
@@ -181,8 +187,7 @@ class CareTask(models.Model):
             return self.times_done
         return 0
 
-    @property
-    def next_due(self):
+    def _base_next_due(self):
         if self.due_date:
             return self.due_date
         # A several-times-a-day task stays due until today's repeats are all done.
@@ -190,6 +195,14 @@ class CareTask(models.Model):
         if self.times_per_day > 1 and self.last_completed == today and self.times_done < self.times_per_day:
             return today
         return self.anchor_date + timedelta(days=self.recurrence_interval_days)
+
+    @property
+    def next_due(self):
+        base = self._base_next_due()
+        # A snooze only ever pushes a task later, never pulls it earlier.
+        if self.snoozed_until and self.snoozed_until > base:
+            return self.snoozed_until
+        return base
 
     @property
     def days_overdue(self):
@@ -219,11 +232,17 @@ class CareTask(models.Model):
         else:
             self.times_done = 1
         self.last_completed = on
+        # Completing a task clears any "remind me later" hold.
+        self.snoozed_until = None
         if self.is_one_off:
             self.active = False
-            self.save(update_fields=["last_completed", "times_done", "active", "updated_at"])
+            self.save(
+                update_fields=["last_completed", "times_done", "active", "snoozed_until", "updated_at"]
+            )
         else:
-            self.save(update_fields=["last_completed", "times_done", "updated_at"])
+            self.save(
+                update_fields=["last_completed", "times_done", "snoozed_until", "updated_at"]
+            )
         default_note = f"Completed: {self.name}"
         if self.times_per_day > 1:
             default_note += f" ({self.times_done} of {self.times_per_day} today)"

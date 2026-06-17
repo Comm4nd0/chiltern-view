@@ -135,6 +135,17 @@ export function useUncompleteTask() {
   })
 }
 
+export function useSnoozeTask() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, days }: { id: number; days?: number }) => api.snoozeTask(id, days),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
 export function useCreateTask() {
   const qc = useQueryClient()
   return useMutation({

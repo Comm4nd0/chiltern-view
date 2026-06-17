@@ -234,6 +234,22 @@ class CareTaskViewSet(viewsets.ModelViewSet):
         task.uncomplete()
         return Response(self.get_serializer(task).data)
 
+    @action(detail=True, methods=["post"])
+    def snooze(self, request, pk=None):
+        """Hold a task back ('remind me later'). Body: {"days": 1} (default 1).
+
+        Sets snoozed_until to N days out; pass days<=0 (or call again after it
+        passes) to clear it. Completing the task clears the snooze too.
+        """
+        task = self.get_object()
+        try:
+            days = int(request.data.get("days", 1))
+        except (TypeError, ValueError):
+            days = 1
+        task.snoozed_until = timezone.localdate() + timedelta(days=days) if days > 0 else None
+        task.save(update_fields=["snoozed_until", "updated_at"])
+        return Response(self.get_serializer(task).data)
+
 
 class LogEntryViewSet(viewsets.ModelViewSet):
     queryset = LogEntry.objects.select_related("animal", "care_task", "created_by").all()

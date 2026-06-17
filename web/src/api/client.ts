@@ -131,6 +131,12 @@ export const api = {
   // Undo an accidental "Done": restores the task's prior schedule.
   uncompleteTask: (id: number) =>
     request<CareTask>(`/care-tasks/${id}/uncomplete/`, { method: 'POST', body: '{}' }),
+  // "Remind me later": hold the task back by N days (default tomorrow).
+  snoozeTask: (id: number, days = 1) =>
+    request<CareTask>(`/care-tasks/${id}/snooze/`, {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    }),
   createTask: (input: CreateTaskInput) =>
     request<CareTask>('/care-tasks/', { method: 'POST', body: JSON.stringify(input) }),
   updateTask: (id: number, patch: UpdateTaskInput) =>

@@ -271,3 +271,50 @@ class AnimalTaskFilterTests(APITestCase):
         self.assertEqual(res.data["species"], "chicken")
         self.assertEqual(res.data["species_display"], "Chicken")
         self.assertIsNone(res.data["animal"])
+
+
+class SnoozeTests(APITestCase):
+    """'Remind me later': snoozing pushes an overdue task to a future due date."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username="marco", password="welly-boots-7")
+        token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
+
+    def test_snooze_pushes_due_date_and_status(self):
+        # A recurring task overdue by 5 days.
+        task = CareTask.objects.create(
+            name="Clean the coop",
+            recurrence_interval_days=7,
+            last_completed=timezone.localdate() - timedelta(days=12),
+        )
+        self.assertEqual(task.status, "overdue")
+        res = self.client.post(f"/api/care-tasks/{task.id}/snooze/", {"days": 2}, format="json")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        task.refresh_from_db()
+        self.assertEqual(task.snoozed_until, timezone.localdate() + timedelta(days=2))
+        self.assertEqual(task.status, "upcoming")
+        self.assertEqual(task.next_due, timezone.localdate() + timedelta(days=2))
+
+    def test_completing_clears_snooze(self):
+        task = CareTask.objects.create(
+            name="Clean the coop",
+            recurrence_interval_days=7,
+            last_completed=timezone.localdate() - timedelta(days=12),
+            snoozed_until=timezone.localdate() + timedelta(days=3),
+        )
+        self.client.post(f"/api/care-tasks/{task.id}/complete/")
+        task.refresh_from_db()
+        self.assertIsNone(task.snoozed_until)
+
+    def test_snooze_never_pulls_due_earlier(self):
+        # An upcoming task far in the future isn't dragged forward by a short snooze.
+        task = CareTask.objects.create(
+            name="Worm the goats",
+            recurrence_interval_days=90,
+            last_completed=timezone.localdate(),
+        )
+        future_due = task.next_due
+        self.client.post(f"/api/care-tasks/{task.id}/snooze/", {"days": 1}, format="json")
+        task.refresh_from_db()
+        self.assertEqual(task.next_due, future_due)
