@@ -11,6 +11,7 @@ import '../widgets/care_task_card.dart'; // AssigneeAvatar
 import 'activity_screen.dart';
 import 'animal_detail_screen.dart';
 import 'egg_log_screen.dart';
+import 'supplies_screen.dart';
 
 // Per-section accent colours (iOS-style varied tints).
 const _teal = Color(0xFF00796B);
@@ -98,6 +99,36 @@ class _OverviewScreenState extends State<OverviewScreen> {
     }
   }
 
+  Widget _suppliesLowBanner(BuildContext context, Overview o) {
+    final theme = Theme.of(context);
+    final amber = Colors.orange.shade800;
+    final names = o.suppliesLow.map((s) => s.name).join(', ');
+    return Card(
+      color: amber.withValues(alpha: 0.10),
+      child: InkWell(
+        onTap: () async {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => const SuppliesScreen()),
+          );
+          _refresh();
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.inventory_2_outlined, color: amber, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Running low: $names.',
+                    style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _withdrawalBanner(BuildContext context, Withdrawal w) {
     final theme = Theme.of(context);
     final amber = Colors.orange.shade800;
@@ -147,6 +178,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
           children: [
             if (o.weather != null) _weather(context, o.weather!),
             for (final w in o.withdrawals) _withdrawalBanner(context, w),
+            if (o.suppliesLow.isNotEmpty) _suppliesLowBanner(context, o),
             _needsDoing(context, o),
             _crops(context, o),
             _eggs(context, o),

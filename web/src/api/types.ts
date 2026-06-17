@@ -189,6 +189,24 @@ export interface Withdrawal {
   until: string
 }
 
+export interface Supply {
+  id: number
+  name: string
+  unit: string
+  quantity: string
+  reorder_at: string
+  is_low: boolean
+  notes: string
+  active: boolean
+}
+
+export interface SupplyLow {
+  id: number
+  name: string
+  quantity: string
+  unit: string
+}
+
 /** A page of a DRF-paginated list, keeping `next` so timelines can load more. */
 export interface Paged<T> {
   results: T[]
@@ -253,6 +271,7 @@ export interface Overview {
   crops: { growing: number; next_harvest: { label: string; date: string } | null }
   eggs: { today: number; this_week: number }
   withdrawals: Withdrawal[]
+  supplies_low: SupplyLow[]
   activity: OverviewActivityEntry[]
   weather: Weather | null
 }

@@ -13,7 +13,7 @@ from .care_sync import close_crop_tasks, resync_crop_tasks
 from .crops import catalog_list
 from .watering import apply_rain_deferral, effective_days_overdue, effective_status
 from .weather import frost_warning, get_weather
-from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person, WeightRecord
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person, Supply, WeightRecord
 from .serializers import (
     AnimalSerializer,
     CareTaskSerializer,
@@ -21,6 +21,7 @@ from .serializers import (
     EggRecordSerializer,
     LogEntrySerializer,
     PersonSerializer,
+    SupplySerializer,
     WeightRecordSerializer,
 )
 
@@ -110,6 +111,18 @@ def overview(request):
         if entry.withdrawal_active
     ]
 
+    # --- Supplies running low (at/below their reorder threshold). ---
+    supplies_low = [
+        {
+            "id": supply.id,
+            "name": supply.name,
+            "quantity": supply.quantity,
+            "unit": supply.unit,
+        }
+        for supply in Supply.objects.filter(active=True)
+        if supply.is_low
+    ]
+
     # --- Recent activity: the latest human notes from the holding journal.
     # Task completions are excluded — they're already visible as task state.
     recent_notes = (
@@ -144,6 +157,7 @@ def overview(request):
             "crops": {"growing": len(growing), "next_harvest": next_harvest},
             "eggs": {"today": eggs_today, "this_week": eggs_week},
             "withdrawals": withdrawals,
+            "supplies_low": supplies_low,
             "activity": activity,
             "weather": {**weather, "frost_warning": frost_warning(weather)} if weather else None,
         }
@@ -281,6 +295,14 @@ class WeightRecordViewSet(viewsets.ModelViewSet):
     ordering_fields = ["date", "weight_kg", "created_at"]
     # Oldest-first by default so a client can plot the trend straight off.
     ordering = ["date"]
+
+
+class SupplyViewSet(viewsets.ModelViewSet):
+    queryset = Supply.objects.all()
+    serializer_class = SupplySerializer
+    filterset_fields = ["active"]
+    search_fields = ["name", "notes"]
+    ordering_fields = ["name", "quantity", "updated_at"]
 
 
 class EggRecordViewSet(viewsets.ModelViewSet):

@@ -443,6 +443,41 @@ class PushReminderLog(models.Model):
         return f"{self.care_task_id} → {self.subscription_id} on {self.sent_date}"
 
 
+class Supply(models.Model):
+    """A consumable kept on the holding (feed, hay, bedding, wormer, …) with a
+    reorder threshold, so the dashboard can flag what's running low."""
+
+    name = models.CharField(max_length=120)
+    unit = models.CharField(
+        max_length=30, blank=True, help_text="Unit it's counted in, e.g. kg, bags, bales."
+    )
+    quantity = models.DecimalField(
+        max_digits=9, decimal_places=2, default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    reorder_at = models.DecimalField(
+        max_digits=9, decimal_places=2, default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Flag as low when quantity drops to or below this.",
+    )
+    notes = models.TextField(blank=True)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name_plural = "supplies"
+
+    def __str__(self):
+        return f"{self.name}: {self.quantity} {self.unit}".strip()
+
+    @property
+    def is_low(self):
+        """True when stock has dropped to or below the reorder threshold."""
+        return self.quantity <= self.reorder_at
+
+
 class WeatherSnapshot(models.Model):
     """The most recently fetched Open-Meteo forecast.
 

@@ -16,6 +16,7 @@ import '../models/egg_trend.dart';
 import '../models/log_entry.dart';
 import '../models/overview.dart';
 import '../models/person.dart';
+import '../models/supply.dart';
 import '../models/weight_record.dart';
 
 class ApiException implements Exception {
@@ -526,6 +527,63 @@ class ApiClient {
     );
     _check(res);
     return Crop.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // --- Supplies -----------------------------------------------------------
+  Future<List<Supply>> supplies() async {
+    final res = await _client.get(_uri('/supplies/', {'ordering': 'name'}), headers: _headers());
+    _check(res);
+    return _decodeList(res).map((e) => Supply.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Supply> createSupply({
+    required String name,
+    String unit = '',
+    required double quantity,
+    required double reorderAt,
+    String notes = '',
+  }) async {
+    final res = await _client.post(
+      _uri('/supplies/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'name': name,
+        'unit': unit,
+        'quantity': '$quantity',
+        'reorder_at': '$reorderAt',
+        'notes': notes,
+      }),
+    );
+    _check(res);
+    return Supply.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<Supply> updateSupply(
+    int id, {
+    required String name,
+    String unit = '',
+    required double quantity,
+    required double reorderAt,
+    String notes = '',
+  }) async {
+    final res = await _client.patch(
+      _uri('/supplies/$id/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'name': name,
+        'unit': unit,
+        'quantity': '$quantity',
+        'reorder_at': '$reorderAt',
+        'notes': notes,
+      }),
+    );
+    _check(res);
+    return Supply.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteSupply(int id) async {
+    final res = await _client.delete(_uri('/supplies/$id/'), headers: _headers());
+    _check(res);
   }
 
   // --- Eggs ---------------------------------------------------------------

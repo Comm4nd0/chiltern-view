@@ -11,6 +11,7 @@ router.register("animals", views.AnimalViewSet)
 router.register("care-tasks", views.CareTaskViewSet)
 router.register("log-entries", views.LogEntryViewSet)
 router.register("weight-records", views.WeightRecordViewSet)
+router.register("supplies", views.SupplyViewSet)
 router.register("egg-records", views.EggRecordViewSet)
 router.register("crops", views.CropViewSet)
 

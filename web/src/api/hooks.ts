@@ -3,6 +3,7 @@ import { api } from './client'
 import type {
   HarvestCropInput,
   LogEntryInput,
+  SupplyInput,
   UpdateCropInput,
   UpdateTaskInput,
   WeightInput,
@@ -289,6 +290,35 @@ export function useCreateWeight() {
 
 export function useDeleteWeight() {
   return useWeightMutation((id: number) => api.deleteWeight(id))
+}
+
+export function useSupplies() {
+  return useQuery({ queryKey: ['supplies'], queryFn: api.supplies })
+}
+
+function useSupplyMutation<TArgs>(mutationFn: (args: TArgs) => Promise<unknown>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['supplies'] })
+      qc.invalidateQueries({ queryKey: ['overview'] })
+    },
+  })
+}
+
+export function useCreateSupply() {
+  return useSupplyMutation((input: SupplyInput) => api.createSupply(input))
+}
+
+export function useUpdateSupply() {
+  return useSupplyMutation(({ id, patch }: { id: number; patch: Partial<SupplyInput> }) =>
+    api.updateSupply(id, patch),
+  )
+}
+
+export function useDeleteSupply() {
+  return useSupplyMutation((id: number) => api.deleteSupply(id))
 }
 
 export function useUpdateLogEntry() {

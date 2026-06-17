@@ -140,6 +140,18 @@ export default function OverviewPage() {
     <QueryBoundary query={overview}>
       {(data) => (
         <Stack spacing={2}>
+          {/* Supplies at/below their reorder threshold. */}
+          {data.supplies_low.length > 0 && (
+            <Alert
+              severity="warning"
+              icon={false}
+              onClick={() => navigate('/supplies')}
+              sx={{ cursor: 'pointer' }}
+            >
+              Running low: {data.supplies_low.map((s) => s.name).join(', ')}.
+            </Alert>
+          )}
+
           {/* Food-safety: medication withdrawal periods still in force. */}
           {data.withdrawals.map((w) => (
             <Alert

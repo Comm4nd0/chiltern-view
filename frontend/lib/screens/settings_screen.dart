@@ -5,6 +5,7 @@ import '../auth_state.dart';
 import '../config.dart';
 import '../models/person.dart';
 import '../services/notification_service.dart';
+import 'supplies_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -138,6 +139,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onPressed: _signOut,
               icon: const Icon(Icons.logout),
               label: const Text('Sign out'),
+            ),
+          ),
+          const Divider(height: 32),
+          Text('Holding', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SuppliesScreen()),
+              ),
+              icon: const Icon(Icons.inventory_2_outlined),
+              label: const Text('Feed & supplies'),
             ),
           ),
           const Divider(height: 32),

@@ -19,6 +19,8 @@ import PersonOutlineIcon from '@mui/icons-material/PersonOutline'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
 import AddIcon from '@mui/icons-material/Add'
 import LogoutIcon from '@mui/icons-material/Logout'
+import { useNavigate } from 'react-router-dom'
+import InventoryIcon from '@mui/icons-material/Inventory2Outlined'
 import { useCreatePerson, useDeletePerson, usePeople } from '../api/hooks'
 import { setMyPersonId, useMyPersonId } from '../config'
 import { clearAuth, useAuth } from '../api/auth'
@@ -93,6 +95,7 @@ function ReminderSettings() {
 }
 
 export default function SettingsPage() {
+  const navigate = useNavigate()
   const people = usePeople()
   const myId = useMyPersonId()
   const createPerson = useCreatePerson()
@@ -195,6 +198,17 @@ export default function SettingsPage() {
           <AddIcon />
         </IconButton>
       </Stack>
+
+      <Divider />
+      <Typography variant="h6">Holding</Typography>
+      <Button
+        variant="outlined"
+        startIcon={<InventoryIcon />}
+        onClick={() => navigate('/supplies')}
+        sx={{ alignSelf: 'flex-start' }}
+      >
+        Feed &amp; supplies
+      </Button>
 
       <Divider />
       <Typography variant="h6">Reminders</Typography>

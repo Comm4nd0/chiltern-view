@@ -13,6 +13,7 @@ import type {
   Overview,
   Paged,
   Person,
+  Supply,
   WeightRecord,
 } from './types'
 import { clearAuth, getToken } from './auth'
@@ -98,6 +99,14 @@ export interface WeightInput {
   weight_kg: string
   date?: string
   note?: string
+}
+
+export interface SupplyInput {
+  name: string
+  unit?: string
+  quantity: string
+  reorder_at: string
+  notes?: string
 }
 
 export interface HarvestCropInput {
@@ -203,6 +212,14 @@ export const api = {
     request<{ ok: boolean }>('/push/subscribe/', { method: 'POST', body: JSON.stringify(sub) }),
   pushUnsubscribe: (endpoint: string) =>
     request<void>('/push/unsubscribe/', { method: 'POST', body: JSON.stringify({ endpoint }) }),
+
+  // Feed & supply inventory.
+  supplies: () => request<unknown>('/supplies/?ordering=name').then(decodeList<Supply>),
+  createSupply: (input: SupplyInput) =>
+    request<Supply>('/supplies/', { method: 'POST', body: JSON.stringify(input) }),
+  updateSupply: (id: number, patch: Partial<SupplyInput>) =>
+    request<Supply>(`/supplies/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  deleteSupply: (id: number) => request<void>(`/supplies/${id}/`, { method: 'DELETE' }),
 
   eggSummary: () => request<EggSummary>('/egg-records/summary/'),
   eggTrend: (days = 30) => request<EggTrend>(`/egg-records/trend/?days=${days}`),

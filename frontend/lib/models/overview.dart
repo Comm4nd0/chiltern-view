@@ -1,4 +1,5 @@
 import '../util/json.dart';
+import 'supply.dart';
 
 class OverviewTask {
   final int id;
@@ -193,6 +194,7 @@ class Overview {
   final int eggsToday;
   final int eggsThisWeek;
   final List<Withdrawal> withdrawals;
+  final List<SupplyLow> suppliesLow;
   final List<OverviewActivityEntry> activity;
   final Weather? weather;
 
@@ -209,6 +211,7 @@ class Overview {
     required this.eggsToday,
     required this.eggsThisWeek,
     required this.withdrawals,
+    required this.suppliesLow,
     required this.activity,
     this.weather,
   });
@@ -237,6 +240,9 @@ class Overview {
       eggsThisWeek: eggs['this_week'] as int? ?? 0,
       withdrawals: (json['withdrawals'] as List<dynamic>? ?? [])
           .map((e) => Withdrawal.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      suppliesLow: (json['supplies_low'] as List<dynamic>? ?? [])
+          .map((e) => SupplyLow.fromJson(e as Map<String, dynamic>))
           .toList(),
       activity: (json['activity'] as List<dynamic>? ?? [])
           .map((e) => OverviewActivityEntry.fromJson(e as Map<String, dynamic>))

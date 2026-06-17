@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person, WeightRecord
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person, Supply, WeightRecord
 
 
 @admin.register(Person)
@@ -41,6 +41,17 @@ class WeightRecordAdmin(admin.ModelAdmin):
     list_display = ["animal", "date", "weight_kg", "note"]
     list_filter = ["animal"]
     date_hierarchy = "date"
+
+
+@admin.register(Supply)
+class SupplyAdmin(admin.ModelAdmin):
+    list_display = ["name", "quantity", "unit", "reorder_at", "is_low", "active"]
+    list_filter = ["active"]
+    search_fields = ["name", "notes"]
+
+    @admin.display(boolean=True, description="Low")
+    def is_low(self, obj):
+        return obj.is_low
 
 
 @admin.register(EggRecord)
