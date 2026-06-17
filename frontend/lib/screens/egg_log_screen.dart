@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import '../api/api_client.dart';
 import '../models/egg_record.dart';
 import '../models/egg_summary.dart';
+import '../models/egg_trend.dart';
 import '../widgets/async_view.dart';
+import '../widgets/mini_bar_chart.dart';
 
 class EggLogScreen extends StatefulWidget {
   const EggLogScreen({super.key});
@@ -15,7 +17,7 @@ class EggLogScreen extends StatefulWidget {
 
 class _EggLogScreenState extends State<EggLogScreen> {
   final ApiClient _api = ApiClient();
-  late Future<(EggSummary, List<EggRecord>)> _future;
+  late Future<(EggSummary, EggTrend, List<EggRecord>)> _future;
   bool _busy = false;
 
   @override
@@ -24,9 +26,17 @@ class _EggLogScreenState extends State<EggLogScreen> {
     _future = _load();
   }
 
-  Future<(EggSummary, List<EggRecord>)> _load() async {
-    final results = await Future.wait([_api.eggSummary(), _api.recentEggs()]);
-    return (results[0] as EggSummary, results[1] as List<EggRecord>);
+  Future<(EggSummary, EggTrend, List<EggRecord>)> _load() async {
+    final results = await Future.wait([
+      _api.eggSummary(),
+      _api.eggTrend(days: 30),
+      _api.recentEggs(),
+    ]);
+    return (
+      results[0] as EggSummary,
+      results[1] as EggTrend,
+      results[2] as List<EggRecord>,
+    );
   }
 
   void _refresh() => setState(() => _future = _load());
@@ -75,11 +85,11 @@ class _EggLogScreenState extends State<EggLogScreen> {
   Widget build(BuildContext context) {
     return RefreshIndicator(
       onRefresh: () async => _refresh(),
-      child: AsyncView<(EggSummary, List<EggRecord>)>(
+      child: AsyncView<(EggSummary, EggTrend, List<EggRecord>)>(
         future: _future,
         onRetry: _refresh,
         builder: (context, data) {
-          final (summary, records) = data;
+          final (summary, trend, records) = data;
           return ListView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(12),
@@ -87,6 +97,10 @@ class _EggLogScreenState extends State<EggLogScreen> {
               _CounterCard(today: summary.today, busy: _busy, onAdd: _add, onCustom: _addCustom),
               const SizedBox(height: 8),
               _SummaryRow(summary: summary),
+              if (trend.total > 0) ...[
+                const SizedBox(height: 8),
+                _TrendCard(trend: trend),
+              ],
               const SizedBox(height: 16),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -195,6 +209,38 @@ class _SummaryRow extends StatelessWidget {
         stat('This month', summary.thisMonth),
         stat('All time', summary.total),
       ],
+    );
+  }
+}
+
+class _TrendCard extends StatelessWidget {
+  final EggTrend trend;
+  const _TrendCard({required this.trend});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Last 30 days', style: theme.textTheme.titleSmall),
+                Text(
+                  '${trend.average}/day avg · ${trend.total} total',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            MiniBarChart(values: [for (final d in trend.days) d.count]),
+          ],
+        ),
+      ),
     );
   }
 }

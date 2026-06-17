@@ -11,42 +11,19 @@ import {
   Typography,
 } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
-import { useCrops } from '../api/hooks'
+import { useCrops, useHarvestHistory } from '../api/hooks'
 import QueryBoundary from '../components/QueryBoundary'
 import CropCard from '../components/CropCard'
 import AddCropDialog from '../components/AddCropDialog'
 import HarvestDialog from '../components/HarvestDialog'
 import type { Crop } from '../api/types'
 
-interface YieldRow {
-  label: string
-  plantings: number
-  totalKg: number
-  varieties: string[]
-}
-
-/** Roll harvested crops up by type: plantings, total kg, varieties grown. */
-function yieldHistory(harvested: Crop[]): YieldRow[] {
-  const groups = new Map<string, YieldRow>()
-  for (const c of harvested) {
-    const row = groups.get(c.crop) ?? {
-      label: c.crop_label,
-      plantings: 0,
-      totalKg: 0,
-      varieties: [],
-    }
-    row.plantings += 1
-    if (c.yield_kg != null) row.totalKg += Number(c.yield_kg)
-    if (c.variety && !row.varieties.includes(c.variety)) row.varieties.push(c.variety)
-    groups.set(c.crop, row)
-  }
-  return [...groups.values()].sort((a, b) => b.totalKg - a.totalKg)
-}
-
 export default function CropsPage() {
   const [view, setView] = useState<'growing' | 'previous'>('growing')
   // "Previous" needs every crop; the growing view uses the lighter default.
   const crops = useCrops(view === 'previous' ? 'all' : 'growing')
+  // Server-side yield roll-up (per crop + overall total), shared with mobile.
+  const harvests = useHarvestHistory()
   const [adding, setAdding] = useState(false)
   const [editing, setEditing] = useState<Crop | null>(null)
   const [harvesting, setHarvesting] = useState<Crop | null>(null)
@@ -83,34 +60,36 @@ export default function CropsPage() {
               </Typography>
             )
           }
-          const history = view === 'previous' ? yieldHistory(shown) : []
+          const history = view === 'previous' ? (harvests.data?.by_crop ?? []) : []
           return (
             <Stack spacing={1}>
               {view === 'previous' && history.length > 0 && (
                 <Card>
                   <CardContent>
-                    <Typography variant="subtitle1" fontWeight={600}>
-                      Yield history
-                    </Typography>
+                    <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+                      <Typography variant="subtitle1" fontWeight={600}>
+                        Yield history
+                      </Typography>
+                      {(harvests.data?.total_kg ?? 0) > 0 && (
+                        <Typography variant="subtitle2" color="text.secondary">
+                          {Math.round((harvests.data?.total_kg ?? 0) * 100) / 100} kg total
+                        </Typography>
+                      )}
+                    </Stack>
                     <Stack divider={<Divider flexItem />} spacing={1} sx={{ mt: 1 }}>
                       {history.map((row) => (
-                        <Stack key={row.label} direction="row" alignItems="baseline" spacing={1}>
+                        <Stack key={row.crop} direction="row" alignItems="baseline" spacing={1}>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography variant="body2" fontWeight={600}>
                               {row.label}
                             </Typography>
-                            {row.varieties.length > 0 && (
-                              <Typography variant="caption" color="text.secondary">
-                                {row.varieties.join(', ')}
-                              </Typography>
-                            )}
                           </Box>
                           <Typography variant="body2" color="text.secondary">
-                            {row.plantings} planting{row.plantings === 1 ? '' : 's'}
+                            {row.count} planting{row.count === 1 ? '' : 's'}
                           </Typography>
-                          {row.totalKg > 0 && (
+                          {row.total_kg > 0 && (
                             <Typography variant="body2" fontWeight={600}>
-                              {Math.round(row.totalKg * 100) / 100} kg
+                              {Math.round(row.total_kg * 100) / 100} kg
                             </Typography>
                           )}
                         </Stack>

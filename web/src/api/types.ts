@@ -58,6 +58,9 @@ export interface Crop {
   id: number
   crop: string
   crop_label: string
+  /** Botanical family code (e.g. 'solanaceae'); null for an unknown crop. */
+  family: string | null
+  family_label: string | null
   variety: string
   planted_on: string
   quantity: number | null
@@ -76,6 +79,8 @@ export interface CropCatalogEntry {
   key: string
   label: string
   days_to_harvest: number
+  family: string | null
+  family_label: string | null
   stages: { label: string; fraction: number }[]
 }
 
@@ -92,6 +97,55 @@ export interface EggSummary {
   this_week: number
   this_month: number
   total: number
+}
+
+export interface EggTrendPoint {
+  date: string
+  count: number
+}
+
+export interface EggTrend {
+  days: EggTrendPoint[]
+  total: number
+  average: number
+  best_day: EggTrendPoint | null
+}
+
+export interface HarvestRecord {
+  id: number
+  crop: string
+  label: string
+  variety: string
+  bed: string
+  harvested_on: string
+  yield_kg: number | null
+}
+
+export interface CropYield {
+  crop: string
+  label: string
+  count: number
+  total_kg: number
+}
+
+export interface HarvestHistory {
+  harvests: HarvestRecord[]
+  by_crop: CropYield[]
+  total_kg: number
+}
+
+export interface BedHistory {
+  bed: string
+  last_crop: string
+  last_family: string | null
+  last_family_label: string | null
+  last_planted_on: string
+  growing: boolean
+  recent_families: string[]
+}
+
+export interface BedsResponse {
+  beds: BedHistory[]
 }
 
 export type LogEntryType = 'general' | 'health' | 'feeding' | 'breeding' | 'task_completed'

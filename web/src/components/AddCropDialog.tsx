@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  Alert,
   Button,
   Dialog,
   DialogActions,
@@ -10,7 +11,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useCreateCrop, useCropCatalog, useDeleteCrop, useUpdateCrop } from '../api/hooks'
+import { useBeds, useCreateCrop, useCropCatalog, useDeleteCrop, useUpdateCrop } from '../api/hooks'
 import type { Crop } from '../api/types'
 
 /** Add a new crop planting, or edit/delete an existing one when `crop` is given. */
@@ -26,6 +27,7 @@ export default function AddCropDialog({
   const updateCrop = useUpdateCrop()
   const deleteCrop = useDeleteCrop()
   const catalog = useCropCatalog()
+  const beds = useBeds()
   const todayIso = new Date().toISOString().slice(0, 10)
 
   const [crop, setCrop] = useState(existing?.crop ?? '')
@@ -38,6 +40,21 @@ export default function AddCropDialog({
   const [error, setError] = useState<string | null>(null)
 
   const busy = createCrop.isPending || updateCrop.isPending || deleteCrop.isPending
+
+  // Crop-rotation hint: warn if this crop's botanical family was grown in the
+  // chosen bed within roughly the last year. Skipped while editing the same
+  // planting (its own history would otherwise flag it).
+  const chosen = (catalog.data ?? []).find((c) => c.key === crop)
+  const bedKey = bed.trim().toLowerCase()
+  const bedHistory = (beds.data ?? []).find((b) => b.bed.trim().toLowerCase() === bedKey)
+  const rotationClash =
+    chosen?.family &&
+    bedKey &&
+    bedHistory &&
+    !(editing && existing.bed.trim().toLowerCase() === bedKey) &&
+    bedHistory.recent_families.includes(chosen.family)
+      ? bedHistory
+      : null
 
   const save = async () => {
     if (!crop) {
@@ -112,6 +129,13 @@ export default function AddCropDialog({
             slotProps={{ inputLabel: { shrink: true } }}
           />
           <TextField label="Bed / row (optional)" value={bed} onChange={(e) => setBed(e.target.value)} />
+          {rotationClash && (
+            <Alert severity="warning" sx={{ py: 0 }}>
+              {chosen?.family_label ?? 'This family'} was grown in {rotationClash.bed} recently (
+              {rotationClash.last_crop}). Rotating to a different bed helps avoid soil pests and
+              disease.
+            </Alert>
+          )}
           <TextField
             label="Quantity planted (optional)"
             type="number"

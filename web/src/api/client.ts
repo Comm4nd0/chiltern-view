@@ -1,11 +1,14 @@
 import type {
   Animal,
   AuthUser,
+  BedsResponse,
   CareTask,
   Crop,
   CropCatalogEntry,
   EggRecord,
   EggSummary,
+  EggTrend,
+  HarvestHistory,
   LogEntry,
   Overview,
   Paged,
@@ -141,6 +144,8 @@ export const api = {
   crops: (show = 'growing') =>
     request<unknown>(`/crops/timeline/?show=${show}`).then(decodeList<Crop>),
   cropCatalog: () => request<CropCatalogEntry[]>('/crops/catalog/'),
+  harvestHistory: () => request<HarvestHistory>('/crops/harvests/'),
+  beds: () => request<BedsResponse>('/crops/beds/').then((r) => r.beds),
   createCrop: (input: CreateCropInput) =>
     request<Crop>('/crops/', { method: 'POST', body: JSON.stringify(input) }),
   updateCrop: (id: number, patch: UpdateCropInput) =>
@@ -176,6 +181,7 @@ export const api = {
     request<void>('/push/unsubscribe/', { method: 'POST', body: JSON.stringify({ endpoint }) }),
 
   eggSummary: () => request<EggSummary>('/egg-records/summary/'),
+  eggTrend: (days = 30) => request<EggTrend>(`/egg-records/trend/?days=${days}`),
   recentEggs: () => request<unknown>('/egg-records/?ordering=-date').then(decodeList<EggRecord>),
   incrementEggs: (count = 1, source?: string) =>
     request<EggRecord>('/egg-records/increment/', {

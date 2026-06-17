@@ -6,11 +6,13 @@ import 'package:http/http.dart' as http;
 import '../config.dart';
 import '../models/animal.dart';
 import '../models/auth_user.dart';
+import '../models/bed_history.dart';
 import '../models/care_task.dart';
 import '../models/crop.dart';
 import '../models/crop_catalog.dart';
 import '../models/egg_record.dart';
 import '../models/egg_summary.dart';
+import '../models/egg_trend.dart';
 import '../models/log_entry.dart';
 import '../models/overview.dart';
 import '../models/person.dart';
@@ -384,6 +386,16 @@ class ApiClient {
     return data.map((e) => CropCatalogEntry.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  /// Per-bed planting history, for crop-rotation warnings in the crop sheet.
+  Future<List<BedHistory>> beds() async {
+    final res = await _client.get(_uri('/crops/beds/'), headers: _headers());
+    _check(res);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['beds'] as List<dynamic>)
+        .map((e) => BedHistory.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<Crop> createCrop({
     required String crop,
     String variety = '',
@@ -471,6 +483,13 @@ class ApiClient {
     final res = await _client.get(_uri('/egg-records/', {'ordering': '-date'}), headers: _headers());
     _check(res);
     return _decodeList(res).map((e) => EggRecord.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Daily egg totals over the last [days] days (zero-filled), for the trend chart.
+  Future<EggTrend> eggTrend({int days = 30}) async {
+    final res = await _client.get(_uri('/egg-records/trend/', {'days': days}), headers: _headers());
+    _check(res);
+    return EggTrend.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   Future<EggRecord> incrementEggs({int count = 1, String? source}) async {

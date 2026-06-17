@@ -97,6 +97,59 @@ CROP_CATALOG = {
 DEFAULT_DAYS_TO_HARVEST = 90
 DEFAULT_STAGES = [("Planted", 0.0), ("Growing", 0.40), ("Ready to harvest", 1.0)]
 
+# Botanical family per crop, for crop-rotation warnings: growing the same family
+# in the same bed two seasons running builds up soil pests and diseases. Key ->
+# family code; human labels below. A crop with no family here simply raises no
+# rotation hint.
+FAMILY_LABELS = {
+    "solanaceae": "Potato & tomato family",
+    "brassica": "Brassicas (cabbage family)",
+    "allium": "Onion family",
+    "legume": "Peas & beans",
+    "apiaceae": "Carrot & parsnip family",
+    "cucurbit": "Squash & cucumber family",
+    "chenopod": "Beet & spinach family",
+    "aster": "Lettuce family",
+    "grass": "Sweetcorn",
+}
+CROP_FAMILY = {
+    "potatoes_first_early": "solanaceae",
+    "potatoes_second_early": "solanaceae",
+    "potatoes_maincrop": "solanaceae",
+    "potatoes_salad": "solanaceae",
+    "tomatoes": "solanaceae",
+    "carrots": "apiaceae",
+    "parsnips": "apiaceae",
+    "beetroot": "chenopod",
+    "spinach": "chenopod",
+    "onions": "allium",
+    "garlic": "allium",
+    "leeks": "allium",
+    "lettuce": "aster",
+    "kale": "brassica",
+    "cabbage": "brassica",
+    "broccoli": "brassica",
+    "cauliflower": "brassica",
+    "peas": "legume",
+    "broad_beans": "legume",
+    "runner_beans": "legume",
+    "french_beans": "legume",
+    "courgettes": "cucurbit",
+    "cucumbers": "cucurbit",
+    "pumpkins": "cucurbit",
+    "sweetcorn": "grass",
+}
+
+
+def crop_family(key):
+    """The botanical family code for a catalog key, or None if unknown."""
+    return CROP_FAMILY.get(key)
+
+
+def crop_family_label(key):
+    """The human family label for a catalog key, or None."""
+    return FAMILY_LABELS.get(CROP_FAMILY.get(key))
+
 # Growth stages that mean a real cultivation job, mapped to the to-do wording.
 # Adding a crop auto-creates a one-off reminder dated at each of these stages
 # (see ``care_knowledge.crop_care_specs``). Stages not listed here are purely
@@ -116,6 +169,8 @@ def catalog_list():
             "key": key,
             "label": entry["label"],
             "days_to_harvest": entry["days_to_harvest"],
+            "family": CROP_FAMILY.get(key),
+            "family_label": crop_family_label(key),
             "stages": [{"label": label, "fraction": frac} for label, frac in entry["stages"]],
         }
         for key, entry in CROP_CATALOG.items()

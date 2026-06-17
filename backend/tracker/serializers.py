@@ -102,6 +102,8 @@ class CropStageSerializer(serializers.Serializer):
 
 class CropSerializer(serializers.ModelSerializer):
     crop_label = serializers.CharField(read_only=True)
+    family = serializers.CharField(read_only=True, default=None)
+    family_label = serializers.CharField(read_only=True, default=None)
     estimated_harvest = serializers.DateField(read_only=True)
     current_stage = serializers.CharField(read_only=True)
     progress = serializers.FloatField(read_only=True)
@@ -110,7 +112,7 @@ class CropSerializer(serializers.ModelSerializer):
     class Meta:
         model = Crop
         fields = [
-            "id", "crop", "crop_label", "variety",
+            "id", "crop", "crop_label", "family", "family_label", "variety",
             "planted_on", "quantity", "bed",
             "expected_harvest", "harvested_on", "yield_kg", "notes",
             "estimated_harvest", "current_stage", "progress", "stages",

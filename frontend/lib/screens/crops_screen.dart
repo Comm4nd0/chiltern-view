@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../api/api_client.dart';
+import '../models/bed_history.dart';
 import '../models/crop.dart';
 import '../models/crop_catalog.dart';
 import '../services/notification_service.dart';
@@ -180,13 +181,25 @@ class _YieldHistoryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final totalKg = rows.fold<double>(0, (sum, row) => sum + row.totalKg);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Yield history', style: theme.textTheme.titleMedium),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text('Yield history', style: theme.textTheme.titleMedium),
+                if (totalKg > 0)
+                  Text('${_kg(totalKg)} kg total',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+              ],
+            ),
             const SizedBox(height: 8),
             for (final row in rows)
               Padding(
@@ -228,6 +241,43 @@ class _YieldHistoryCard extends StatelessWidget {
   }
 }
 
+/// Crop-rotation hint shown under the bed field when the chosen crop's family
+/// was grown in that bed recently.
+class _RotationWarning extends StatelessWidget {
+  final BedHistory clash;
+  final String? familyLabel;
+  const _RotationWarning({required this.clash, this.familyLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final amber = Colors.orange.shade800;
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: amber.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: amber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '${familyLabel ?? 'This family'} was grown in ${clash.bed} recently '
+              '(${clash.lastCrop}). Rotating to a different bed helps avoid soil '
+              'pests and disease.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Add a new crop planting, or edit/delete an existing one when [crop] is given.
 class _CropSheet extends StatefulWidget {
   final ApiClient api;
@@ -245,6 +295,7 @@ class _CropSheetState extends State<_CropSheet> {
   late final TextEditingController _quantity;
   late final TextEditingController _notes;
   List<CropCatalogEntry> _catalog = [];
+  List<BedHistory> _beds = [];
   String? _crop;
   late DateTime _plantedOn;
   DateTime? _expectedHarvest;
@@ -263,16 +314,53 @@ class _CropSheetState extends State<_CropSheet> {
     _notes = TextEditingController(text: crop?.notes ?? '');
     _plantedOn = crop?.plantedOn ?? DateTime.now();
     _expectedHarvest = crop?.expectedHarvest;
-    _loadCatalog();
+    _loadRefs();
   }
 
-  Future<void> _loadCatalog() async {
+  Future<void> _loadRefs() async {
     try {
       final catalog = await widget.api.cropCatalog();
       if (mounted) setState(() => _catalog = catalog);
     } catch (_) {
       // The crop dropdown just stays empty if the catalog can't be loaded.
     }
+    try {
+      final beds = await widget.api.beds();
+      if (mounted) setState(() => _beds = beds);
+    } catch (_) {
+      // No rotation hint if the bed history can't be loaded — non-essential.
+    }
+  }
+
+  /// Botanical family of the currently selected crop, from the catalog.
+  String? get _selectedFamily {
+    for (final entry in _catalog) {
+      if (entry.key == _crop) return entry.family;
+    }
+    return widget.crop?.family;
+  }
+
+  String? get _selectedFamilyLabel {
+    for (final entry in _catalog) {
+      if (entry.key == _crop) return entry.familyLabel;
+    }
+    return widget.crop?.familyLabel;
+  }
+
+  /// The bed history clashing with this planting — same botanical family grown
+  /// in the chosen bed recently — or null when rotation looks fine.
+  BedHistory? get _rotationClash {
+    final family = _selectedFamily;
+    final bed = _bed.text.trim().toLowerCase();
+    if (family == null || bed.isEmpty) return null;
+    // Editing the same planting in its own bed shouldn't flag itself.
+    if (_editing && widget.crop!.bed.trim().toLowerCase() == bed) return null;
+    for (final b in _beds) {
+      if (b.bed.trim().toLowerCase() == bed && b.recentFamilies.contains(family)) {
+        return b;
+      }
+    }
+    return null;
   }
 
   @override
@@ -400,6 +488,11 @@ class _CropSheetState extends State<_CropSheet> {
                   labelText: 'Bed / row (optional)',
                   border: OutlineInputBorder(),
                 ),
+                onChanged: (_) => setState(() {}),
+              ),
+              if (_rotationClash != null) _RotationWarning(
+                clash: _rotationClash!,
+                familyLabel: _selectedFamilyLabel,
               ),
               const SizedBox(height: 12),
               TextFormField(

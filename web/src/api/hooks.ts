@@ -91,6 +91,18 @@ export function useEggSummary() {
   return useQuery({ queryKey: keys.eggSummary, queryFn: api.eggSummary })
 }
 
+export function useEggTrend(days = 30) {
+  return useQuery({ queryKey: ['eggs', 'trend', days], queryFn: () => api.eggTrend(days) })
+}
+
+export function useHarvestHistory() {
+  return useQuery({ queryKey: ['crops', 'harvests'], queryFn: api.harvestHistory })
+}
+
+export function useBeds() {
+  return useQuery({ queryKey: ['crops', 'beds'], queryFn: api.beds })
+}
+
 export function useRecentEggs() {
   return useQuery({ queryKey: keys.eggRecent, queryFn: api.recentEggs })
 }

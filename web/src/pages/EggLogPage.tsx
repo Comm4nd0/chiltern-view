@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  Box,
   Button,
   Card,
   CardContent,
@@ -14,8 +15,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { useEggSummary, useIncrementEggs, useRecentEggs } from '../api/hooks'
+import { useEggSummary, useEggTrend, useIncrementEggs, useRecentEggs } from '../api/hooks'
 import QueryBoundary from '../components/QueryBoundary'
+import MiniBarChart from '../components/MiniBarChart'
 import { fmtDate } from '../format'
 
 function Stat({ label, value }: { label: string; value: number }) {
@@ -33,6 +35,7 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 export default function EggLogPage() {
   const summary = useEggSummary()
+  const trend = useEggTrend(30)
   const recent = useRecentEggs()
   const increment = useIncrementEggs()
   const [customOpen, setCustomOpen] = useState(false)
@@ -92,6 +95,26 @@ export default function EggLogPage() {
             <Stat label="All time" value={s.total} />
           </Stack>
         )}
+      </QueryBoundary>
+
+      <QueryBoundary query={trend}>
+        {(t) =>
+          t.total === 0 ? null : (
+            <Card>
+              <CardContent sx={{ py: 1.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+                  <Typography variant="subtitle2">Last 30 days</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {t.average}/day avg · {t.total} total
+                  </Typography>
+                </Stack>
+                <Box sx={{ mt: 1 }}>
+                  <MiniBarChart data={t.days} />
+                </Box>
+              </CardContent>
+            </Card>
+          )
+        }
       </QueryBoundary>
 
       <Typography variant="subtitle1">Recent</Typography>

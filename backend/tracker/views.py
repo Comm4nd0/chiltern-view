@@ -261,6 +261,37 @@ class EggRecordViewSet(viewsets.ModelViewSet):
         return Response(self.get_serializer(record).data)
 
     @action(detail=False)
+    def trend(self, request):
+        """Daily egg totals over the last N days (default 30), zero-filled.
+
+        Drives the laying-trend chart on the Eggs page and Home dashboard so a
+        dip (a hen off-lay or gone broody) is visible at a glance. ``days`` is
+        clamped to 1–365.
+        """
+        try:
+            days = int(request.query_params.get("days", 30))
+        except (TypeError, ValueError):
+            days = 30
+        days = max(1, min(days, 365))
+        today = timezone.localdate()
+        start = today - timedelta(days=days - 1)
+        rows = EggRecord.objects.filter(date__gte=start).values("date").annotate(n=Sum("count"))
+        by_date = {row["date"]: row["n"] or 0 for row in rows}
+        series = [
+            {"date": (d := start + timedelta(days=i)), "count": by_date.get(d, 0)}
+            for i in range(days)
+        ]
+        total = sum(point["count"] for point in series)
+        return Response(
+            {
+                "days": series,
+                "total": total,
+                "average": round(total / days, 1),
+                "best_day": max(series, key=lambda p: p["count"]) if total else None,
+            }
+        )
+
+    @action(detail=False)
     def summary(self, request):
         """Totals for today, this week, this month and all time."""
         today = timezone.localdate()
@@ -332,6 +363,79 @@ class CropViewSet(viewsets.ModelViewSet):
             for crop in crops
         ]
         return Response({"count": len(cards), "crops": cards})
+
+    @action(detail=False)
+    def harvests(self, request):
+        """Harvest history plus per-crop yield totals (kg), best first.
+
+        Surfaces the ``yield_kg`` / ``harvested_on`` data the harvest action
+        records but nothing yet displays — a season's tally per crop type, and
+        the individual harvests behind it.
+        """
+        harvested = list(
+            self.get_queryset().filter(harvested_on__isnull=False).order_by("-harvested_on")
+        )
+        by_crop = {}
+        for crop in harvested:
+            agg = by_crop.setdefault(
+                crop.crop,
+                {"crop": crop.crop, "label": crop.crop_label, "count": 0, "total_kg": Decimal("0")},
+            )
+            agg["count"] += 1
+            if crop.yield_kg is not None:
+                agg["total_kg"] += crop.yield_kg
+        by_crop_list = sorted(by_crop.values(), key=lambda a: a["total_kg"], reverse=True)
+        for agg in by_crop_list:
+            agg["total_kg"] = float(agg["total_kg"])
+        total_kg = float(sum((crop.yield_kg or Decimal("0")) for crop in harvested))
+        harvests = [
+            {
+                "id": crop.id,
+                "crop": crop.crop,
+                "label": crop.crop_label,
+                "variety": crop.variety,
+                "bed": crop.bed,
+                "harvested_on": crop.harvested_on,
+                "yield_kg": float(crop.yield_kg) if crop.yield_kg is not None else None,
+            }
+            for crop in harvested
+        ]
+        return Response({"harvests": harvests, "by_crop": by_crop_list, "total_kg": total_kg})
+
+    @action(detail=False)
+    def beds(self, request):
+        """Per-bed planting history with the recent botanical families grown.
+
+        Clients use ``recent_families`` to warn when a new planting would repeat
+        a family grown in that bed within roughly the last year (poor rotation).
+        """
+        crops = list(self.get_queryset().exclude(bed="").order_by("bed", "-planted_on"))
+        today = timezone.localdate()
+        beds = {}
+        for crop in crops:
+            beds.setdefault(crop.bed, []).append(crop)
+        out = []
+        for bed, plantings in sorted(beds.items()):
+            last = plantings[0]
+            recent_families = sorted(
+                {
+                    crop.family
+                    for crop in plantings
+                    if crop.family and (today - crop.planted_on).days <= 425
+                }
+            )
+            out.append(
+                {
+                    "bed": bed,
+                    "last_crop": last.crop_label,
+                    "last_family": last.family,
+                    "last_family_label": last.family_label,
+                    "last_planted_on": last.planted_on,
+                    "growing": last.harvested_on is None,
+                    "recent_families": recent_families,
+                }
+            )
+        return Response({"beds": out})
 
     @action(detail=True, methods=["post"])
     def harvest(self, request, pk=None):

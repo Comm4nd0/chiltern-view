@@ -5,7 +5,13 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
 
-from .crops import CROP_CATALOG, DEFAULT_DAYS_TO_HARVEST, DEFAULT_STAGES
+from .crops import (
+    CROP_CATALOG,
+    DEFAULT_DAYS_TO_HARVEST,
+    DEFAULT_STAGES,
+    crop_family,
+    crop_family_label,
+)
 
 
 class Animal(models.Model):
@@ -422,6 +428,16 @@ class Crop(models.Model):
     def crop_label(self):
         entry = self._entry
         return entry["label"] if entry else self.crop.replace("_", " ").title()
+
+    @property
+    def family(self):
+        """Botanical family code (drives crop-rotation warnings), or None."""
+        return crop_family(self.crop)
+
+    @property
+    def family_label(self):
+        """Human botanical family label, or None for an unknown crop."""
+        return crop_family_label(self.crop)
 
     @property
     def season_days(self):
