@@ -529,6 +529,15 @@ class ApiClient {
     return Crop.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
+  // --- Export -------------------------------------------------------------
+  /// Fetch one dataset as raw CSV text (animals, crops, eggs, weights,
+  /// supplies, journal) for copying out / backing up.
+  Future<String> exportCsv(String dataset) async {
+    final res = await _client.get(_uri('/export/$dataset/'), headers: _headers());
+    _check(res);
+    return res.body;
+  }
+
   // --- Supplies -----------------------------------------------------------
   Future<List<Supply>> supplies() async {
     final res = await _client.get(_uri('/supplies/', {'ordering': 'name'}), headers: _headers());

@@ -48,6 +48,25 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return (await res.json()) as T
 }
 
+/** Download a dataset as a CSV file. Uses the auth token (a plain link can't
+ * send the Authorization header), fetching a blob and triggering a save. */
+export async function downloadExport(dataset: string): Promise<void> {
+  const token = getToken()
+  const res = await fetch(`${BASE}/export/${dataset}/`, {
+    headers: token ? { Authorization: `Token ${token}` } : {},
+  })
+  if (!res.ok) throw new Error(`Export failed (${res.status})`)
+  const blob = await res.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `chiltern_${dataset}.csv`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 // DRF list endpoints are paginated ({ results: [...] }); custom actions are not.
 function decodeList<T>(data: unknown): T[] {
   if (data && typeof data === 'object' && 'results' in data) {

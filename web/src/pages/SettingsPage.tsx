@@ -24,7 +24,7 @@ import InventoryIcon from '@mui/icons-material/Inventory2Outlined'
 import { useCreatePerson, useDeletePerson, usePeople } from '../api/hooks'
 import { setMyPersonId, useMyPersonId } from '../config'
 import { clearAuth, useAuth } from '../api/auth'
-import { api } from '../api/client'
+import { api, downloadExport } from '../api/client'
 import { queryClient } from '../queryClient'
 import QueryBoundary from '../components/QueryBoundary'
 import { disablePush, enablePush, getPushState, type PushState } from '../push'
@@ -102,6 +102,7 @@ export default function SettingsPage() {
   const deletePerson = useDeletePerson()
   const { user } = useAuth()
   const [name, setName] = useState('')
+  const [exportError, setExportError] = useState<string | null>(null)
 
   const signOut = async () => {
     // This browser's reminders belong to whoever is signed in — drop the
@@ -209,6 +210,30 @@ export default function SettingsPage() {
       >
         Feed &amp; supplies
       </Button>
+
+      <Divider />
+      <Typography variant="h6">Export data</Typography>
+      <Typography variant="body2" color="text.secondary">
+        Download a CSV backup of any part of the holding.
+      </Typography>
+      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+        {(['animals', 'crops', 'eggs', 'weights', 'supplies', 'journal'] as const).map((d) => (
+          <Button
+            key={d}
+            size="small"
+            variant="outlined"
+            onClick={() => downloadExport(d).catch(() => setExportError('Export failed.'))}
+            sx={{ textTransform: 'capitalize' }}
+          >
+            {d}
+          </Button>
+        ))}
+      </Stack>
+      {exportError && (
+        <Typography color="error" variant="body2">
+          {exportError}
+        </Typography>
+      )}
 
       <Divider />
       <Typography variant="h6">Reminders</Typography>

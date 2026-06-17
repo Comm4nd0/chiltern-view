@@ -5,6 +5,7 @@ import '../auth_state.dart';
 import '../config.dart';
 import '../models/person.dart';
 import '../services/notification_service.dart';
+import 'export_screen.dart';
 import 'supplies_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -152,6 +153,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               icon: const Icon(Icons.inventory_2_outlined),
               label: const Text('Feed & supplies'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const ExportScreen()),
+              ),
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Export data (CSV)'),
             ),
           ),
           const Divider(height: 32),

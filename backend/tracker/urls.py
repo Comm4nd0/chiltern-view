@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from . import views
 from .auth import LoginView, logout, me
+from .export import export_csv, export_index
 from .push import subscribe, unsubscribe, vapid_public_key
 
 router = DefaultRouter()
@@ -21,6 +22,8 @@ urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="auth-login"),
     path("auth/logout/", logout, name="auth-logout"),
     path("auth/me/", me, name="auth-me"),
+    path("export/", export_index, name="export-index"),
+    path("export/<str:dataset>/", export_csv, name="export-csv"),
     path("push/vapid-public-key/", vapid_public_key, name="push-vapid-key"),
     path("push/subscribe/", subscribe, name="push-subscribe"),
     path("push/unsubscribe/", unsubscribe, name="push-unsubscribe"),
