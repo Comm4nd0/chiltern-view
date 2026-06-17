@@ -13,6 +13,7 @@ import type {
   Overview,
   Paged,
   Person,
+  WeightRecord,
 } from './types'
 import { clearAuth, getToken } from './auth'
 import { queryClient } from '../queryClient'
@@ -87,6 +88,16 @@ export interface LogEntryInput {
   note: string
   animal?: number | null
   occurred_on?: string
+  /** Medicine given (health entries) and its food-safety withdrawal period. */
+  medicine?: string
+  withdrawal_days?: number | null
+}
+
+export interface WeightInput {
+  animal: number
+  weight_kg: string
+  date?: string
+  note?: string
 }
 
 export interface HarvestCropInput {
@@ -169,6 +180,13 @@ export const api = {
   },
   createLogEntry: (input: LogEntryInput) =>
     request<LogEntry>('/log-entries/', { method: 'POST', body: JSON.stringify(input) }),
+
+  // Animal weight log (oldest-first, for the growth trend).
+  weights: (animalId: number) =>
+    request<unknown>(`/weight-records/?animal=${animalId}`).then(decodeList<WeightRecord>),
+  createWeight: (input: WeightInput) =>
+    request<WeightRecord>('/weight-records/', { method: 'POST', body: JSON.stringify(input) }),
+  deleteWeight: (id: number) => request<void>(`/weight-records/${id}/`, { method: 'DELETE' }),
   updateLogEntry: (id: number, patch: Partial<LogEntryInput>) =>
     request<LogEntry>(`/log-entries/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteLogEntry: (id: number) => request<void>(`/log-entries/${id}/`, { method: 'DELETE' }),

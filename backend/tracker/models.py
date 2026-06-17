@@ -1,5 +1,6 @@
 """Domain models for the Chiltern View smallholding tracker."""
 from datetime import timedelta
+from decimal import Decimal
 
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -279,6 +280,17 @@ class LogEntry(models.Model):
 
     entry_type = models.CharField(max_length=20, choices=EntryType.choices, default=EntryType.GENERAL)
     note = models.TextField()
+    # Medication tracking (health entries): the product given and its food-safety
+    # withdrawal period. While within the period, produce from the treated animal
+    # mustn't be eaten — the dashboards surface a "do not eat until …" banner.
+    medicine = models.CharField(
+        max_length=120, blank=True, default="", help_text="Medicine/treatment given, if any."
+    )
+    withdrawal_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Days after treatment that eggs/meat must not be eaten.",
+    )
     animal = models.ForeignKey(
         Animal, null=True, blank=True, on_delete=models.SET_NULL, related_name="log_entries"
     )
@@ -301,6 +313,39 @@ class LogEntry(models.Model):
 
     def __str__(self):
         return f"[{self.occurred_on}] {self.get_entry_type_display()}: {self.note[:40]}"
+
+    @property
+    def withdrawal_until(self):
+        """Last day produce from the treated animal must not be eaten, or None."""
+        if self.withdrawal_days:
+            return self.occurred_on + timedelta(days=self.withdrawal_days)
+        return None
+
+    @property
+    def withdrawal_active(self):
+        """True while the withdrawal period is still in force (today included)."""
+        until = self.withdrawal_until
+        return until is not None and until >= timezone.localdate()
+
+
+class WeightRecord(models.Model):
+    """A dated weight reading for an animal — drives the growth/weight trend."""
+
+    animal = models.ForeignKey(
+        Animal, on_delete=models.CASCADE, related_name="weight_records"
+    )
+    date = models.DateField(default=timezone.localdate)
+    weight_kg = models.DecimalField(
+        max_digits=7, decimal_places=2, validators=[MinValueValidator(Decimal("0"))]
+    )
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.animal_id}: {self.weight_kg} kg on {self.date}"
 
 
 class EggRecord(models.Model):

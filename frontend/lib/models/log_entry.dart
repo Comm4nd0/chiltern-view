@@ -6,6 +6,10 @@ class LogEntry {
   final String entryType;
   final String entryTypeDisplay;
   final String note;
+  final String medicine;
+  final int? withdrawalDays;
+  final DateTime? withdrawalUntil;
+  final bool withdrawalActive;
   final int? animal;
   final String? animalName;
   final int? careTask;
@@ -19,6 +23,10 @@ class LogEntry {
     required this.entryType,
     required this.entryTypeDisplay,
     required this.note,
+    this.medicine = '',
+    this.withdrawalDays,
+    this.withdrawalUntil,
+    this.withdrawalActive = false,
     required this.animal,
     required this.animalName,
     required this.careTask,
@@ -33,6 +41,10 @@ class LogEntry {
         entryType: json['entry_type'] as String? ?? 'general',
         entryTypeDisplay: json['entry_type_display'] as String? ?? '',
         note: json['note'] as String? ?? '',
+        medicine: json['medicine'] as String? ?? '',
+        withdrawalDays: json['withdrawal_days'] as int?,
+        withdrawalUntil: asNullableDate(json['withdrawal_until']),
+        withdrawalActive: json['withdrawal_active'] as bool? ?? false,
         animal: json['animal'] as int?,
         animalName: json['animal_name'] as String?,
         careTask: json['care_task'] as int?,

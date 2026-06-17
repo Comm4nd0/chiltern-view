@@ -13,7 +13,7 @@ from .care_sync import close_crop_tasks, resync_crop_tasks
 from .crops import catalog_list
 from .watering import apply_rain_deferral, effective_days_overdue, effective_status
 from .weather import frost_warning, get_weather
-from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person, WeightRecord
 from .serializers import (
     AnimalSerializer,
     CareTaskSerializer,
@@ -21,6 +21,7 @@ from .serializers import (
     EggRecordSerializer,
     LogEntrySerializer,
     PersonSerializer,
+    WeightRecordSerializer,
 )
 
 
@@ -91,6 +92,24 @@ def overview(request):
     eggs_today = EggRecord.objects.filter(date=today).aggregate(n=Sum("count"))["n"] or 0
     eggs_week = EggRecord.objects.filter(date__gte=week_start).aggregate(n=Sum("count"))["n"] or 0
 
+    # --- Medication withdrawals still in force: food-safety banner ("don't eat
+    # eggs/meat from this animal until …"). Only health entries can set one.
+    withdrawals = [
+        {
+            "id": entry.id,
+            "animal": entry.animal_id,
+            "animal_name": entry.animal.name if entry.animal else None,
+            "medicine": entry.medicine,
+            "until": entry.withdrawal_until,
+        }
+        for entry in (
+            LogEntry.objects.select_related("animal")
+            .filter(withdrawal_days__isnull=False, occurred_on__gte=today - timedelta(days=365))
+            .order_by("-occurred_on")
+        )
+        if entry.withdrawal_active
+    ]
+
     # --- Recent activity: the latest human notes from the holding journal.
     # Task completions are excluded — they're already visible as task state.
     recent_notes = (
@@ -124,6 +143,7 @@ def overview(request):
             "animals": {"total": len(animals), "by_species": by_species},
             "crops": {"growing": len(growing), "next_harvest": next_harvest},
             "eggs": {"today": eggs_today, "this_week": eggs_week},
+            "withdrawals": withdrawals,
             "activity": activity,
             "weather": {**weather, "frost_warning": frost_warning(weather)} if weather else None,
         }
@@ -234,6 +254,15 @@ class LogEntryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=person_for(self.request.user))
+
+
+class WeightRecordViewSet(viewsets.ModelViewSet):
+    queryset = WeightRecord.objects.select_related("animal").all()
+    serializer_class = WeightRecordSerializer
+    filterset_fields = ["animal"]
+    ordering_fields = ["date", "weight_kg", "created_at"]
+    # Oldest-first by default so a client can plot the trend straight off.
+    ordering = ["date"]
 
 
 class EggRecordViewSet(viewsets.ModelViewSet):

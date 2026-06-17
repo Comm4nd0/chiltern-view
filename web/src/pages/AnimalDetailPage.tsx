@@ -20,6 +20,7 @@ import {
   useAnimalTasks,
   useAnimals,
   useCompleteTask,
+  useOverview,
   useUncompleteTask,
 } from '../api/hooks'
 import type { CareTask, LogEntry } from '../api/types'
@@ -28,6 +29,7 @@ import AnimalDialog from '../components/AnimalDialog'
 import AddTaskDialog from '../components/AddTaskDialog'
 import CareTaskCard from '../components/CareTaskCard'
 import LogEntryDialog from '../components/LogEntryDialog'
+import WeightCard from '../components/WeightCard'
 import { SPECIES_EMOJI, ageLabel } from '../animals'
 import { TYPE_COLORS } from '../journal'
 import { fmtDate } from '../format'
@@ -79,6 +81,7 @@ export default function AnimalDetailPage() {
   const types = FILTERS.find((f) => f.key === filter)?.types
   const log = useAnimalLog(animalId, types)
   const tasks = useAnimalTasks(animalId)
+  const overview = useOverview()
   const complete = useCompleteTask()
   const uncomplete = useUncompleteTask()
   const [addingNote, setAddingNote] = useState(false)
@@ -161,6 +164,15 @@ export default function AnimalDetailPage() {
                 </Stack>
               </CardContent>
             </Card>
+
+            {(overview.data?.withdrawals.filter((w) => w.animal === animalId) ?? []).map((w) => (
+              <Alert key={w.id} severity="warning">
+                Don't eat eggs/meat from {animal.name} until {fmtDate(w.until)}
+                {w.medicine ? ` (${w.medicine})` : ''}.
+              </Alert>
+            ))}
+
+            <WeightCard animalId={animal.id} />
 
             <Card>
               <CardContent>

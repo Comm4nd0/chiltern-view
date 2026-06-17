@@ -154,6 +154,32 @@ class OverviewActivityEntry {
       );
 }
 
+/// A medication withdrawal period still in force — surfaced as a food-safety
+/// banner ("don't eat eggs/meat from this animal until …").
+class Withdrawal {
+  final int id;
+  final int? animal;
+  final String? animalName;
+  final String medicine;
+  final DateTime until;
+
+  Withdrawal({
+    required this.id,
+    required this.animal,
+    required this.animalName,
+    required this.medicine,
+    required this.until,
+  });
+
+  factory Withdrawal.fromJson(Map<String, dynamic> json) => Withdrawal(
+        id: json['id'] as int,
+        animal: json['animal'] as int?,
+        animalName: json['animal_name'] as String?,
+        medicine: json['medicine'] as String? ?? '',
+        until: asDate(json['until']),
+      );
+}
+
 class Overview {
   final int tasksOverdue;
   final int tasksDueToday;
@@ -166,6 +192,7 @@ class Overview {
   final NextHarvest? nextHarvest;
   final int eggsToday;
   final int eggsThisWeek;
+  final List<Withdrawal> withdrawals;
   final List<OverviewActivityEntry> activity;
   final Weather? weather;
 
@@ -181,6 +208,7 @@ class Overview {
     required this.nextHarvest,
     required this.eggsToday,
     required this.eggsThisWeek,
+    required this.withdrawals,
     required this.activity,
     this.weather,
   });
@@ -207,6 +235,9 @@ class Overview {
       nextHarvest: nh == null ? null : NextHarvest.fromJson(nh),
       eggsToday: eggs['today'] as int? ?? 0,
       eggsThisWeek: eggs['this_week'] as int? ?? 0,
+      withdrawals: (json['withdrawals'] as List<dynamic>? ?? [])
+          .map((e) => Withdrawal.fromJson(e as Map<String, dynamic>))
+          .toList(),
       activity: (json['activity'] as List<dynamic>? ?? [])
           .map((e) => OverviewActivityEntry.fromJson(e as Map<String, dynamic>))
           .toList(),

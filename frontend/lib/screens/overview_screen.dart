@@ -97,6 +97,42 @@ class _OverviewScreenState extends State<OverviewScreen> {
     }
   }
 
+  Widget _withdrawalBanner(BuildContext context, Withdrawal w) {
+    final theme = Theme.of(context);
+    final amber = Colors.orange.shade800;
+    final medicine = w.medicine.isNotEmpty ? ' (${w.medicine})' : '';
+    return Card(
+      color: amber.withValues(alpha: 0.10),
+      child: InkWell(
+        onTap: w.animal != null
+            ? () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => AnimalDetailScreen(animalId: w.animal!)),
+                );
+                _refresh();
+              }
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.no_food, color: amber, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  "Don't eat eggs/meat from ${w.animalName ?? 'a treated animal'} until "
+                  '${DateFormat('d MMM y').format(w.until)}$medicine.',
+                  style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
@@ -109,6 +145,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             if (o.weather != null) _weather(context, o.weather!),
+            for (final w in o.withdrawals) _withdrawalBanner(context, w),
             _needsDoing(context, o),
             _crops(context, o),
             _eggs(context, o),

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person, WeightRecord
 
 
 @admin.register(Person)
@@ -34,6 +34,13 @@ class LogEntryAdmin(admin.ModelAdmin):
     list_filter = ["entry_type", "occurred_on"]
     search_fields = ["note"]
     date_hierarchy = "occurred_on"
+
+
+@admin.register(WeightRecord)
+class WeightRecordAdmin(admin.ModelAdmin):
+    list_display = ["animal", "date", "weight_kg", "note"]
+    list_filter = ["animal"]
+    date_hierarchy = "date"
 
 
 @admin.register(EggRecord)

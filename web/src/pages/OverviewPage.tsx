@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -139,6 +140,20 @@ export default function OverviewPage() {
     <QueryBoundary query={overview}>
       {(data) => (
         <Stack spacing={2}>
+          {/* Food-safety: medication withdrawal periods still in force. */}
+          {data.withdrawals.map((w) => (
+            <Alert
+              key={w.id}
+              severity="warning"
+              onClick={() => w.animal != null && navigate(`/animals/${w.animal}`)}
+              sx={{ cursor: w.animal != null ? 'pointer' : 'default' }}
+            >
+              Don't eat eggs/meat from {w.animal_name ?? 'a treated animal'} until{' '}
+              {fmtDate(w.until)}
+              {w.medicine ? ` (${w.medicine})` : ''}.
+            </Alert>
+          ))}
+
           {/* Needs doing */}
           <Card>
             <CardContent>

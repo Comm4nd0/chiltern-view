@@ -10,6 +10,7 @@ router.register("people", views.PersonViewSet)
 router.register("animals", views.AnimalViewSet)
 router.register("care-tasks", views.CareTaskViewSet)
 router.register("log-entries", views.LogEntryViewSet)
+router.register("weight-records", views.WeightRecordViewSet)
 router.register("egg-records", views.EggRecordViewSet)
 router.register("crops", views.CropViewSet)
 

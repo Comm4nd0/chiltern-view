@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person
+from .models import Animal, CareTask, Crop, EggRecord, LogEntry, Person, WeightRecord
 
 
 class PersonSerializer(serializers.ModelSerializer):
@@ -75,17 +75,27 @@ class LogEntrySerializer(serializers.ModelSerializer):
     animal_name = serializers.CharField(source="animal.name", read_only=True, default=None)
     care_task_name = serializers.CharField(source="care_task.name", read_only=True, default=None)
     created_by_name = serializers.CharField(source="created_by.name", read_only=True, default=None)
+    withdrawal_until = serializers.DateField(read_only=True)
+    withdrawal_active = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = LogEntry
         fields = [
             "id", "entry_type", "entry_type_display", "note",
+            "medicine", "withdrawal_days", "withdrawal_until", "withdrawal_active",
             "animal", "animal_name", "care_task", "care_task_name",
             "created_by", "created_by_name",
             "occurred_on", "created_at",
         ]
         # created_by is stamped from the logged-in user, not client-supplied.
         read_only_fields = ["created_at", "created_by"]
+
+
+class WeightRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WeightRecord
+        fields = ["id", "animal", "date", "weight_kg", "note", "created_at"]
+        read_only_fields = ["created_at"]
 
 
 class EggRecordSerializer(serializers.ModelSerializer):

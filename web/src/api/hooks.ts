@@ -1,6 +1,12 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './client'
-import type { HarvestCropInput, LogEntryInput, UpdateCropInput, UpdateTaskInput } from './client'
+import type {
+  HarvestCropInput,
+  LogEntryInput,
+  UpdateCropInput,
+  UpdateTaskInput,
+  WeightInput,
+} from './client'
 
 export const keys = {
   dashboard: (assignee?: string) => ['dashboard', assignee ?? 'all'] as const,
@@ -241,6 +247,26 @@ function useLogMutation<TArgs>(mutationFn: (args: TArgs) => Promise<unknown>) {
 
 export function useCreateLogEntry() {
   return useLogMutation((input: LogEntryInput) => api.createLogEntry(input))
+}
+
+export function useWeights(animalId: number) {
+  return useQuery({ queryKey: ['weights', animalId], queryFn: () => api.weights(animalId) })
+}
+
+function useWeightMutation<TArgs>(mutationFn: (args: TArgs) => Promise<unknown>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['weights'] }),
+  })
+}
+
+export function useCreateWeight() {
+  return useWeightMutation((input: WeightInput) => api.createWeight(input))
+}
+
+export function useDeleteWeight() {
+  return useWeightMutation((id: number) => api.deleteWeight(id))
 }
 
 export function useUpdateLogEntry() {

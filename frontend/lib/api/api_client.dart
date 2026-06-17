@@ -16,6 +16,7 @@ import '../models/egg_trend.dart';
 import '../models/log_entry.dart';
 import '../models/overview.dart';
 import '../models/person.dart';
+import '../models/weight_record.dart';
 
 class ApiException implements Exception {
   final int statusCode;
@@ -333,6 +334,8 @@ class ApiClient {
     required String note,
     int? animal,
     DateTime? occurredOn,
+    String medicine = '',
+    int? withdrawalDays,
   }) async {
     final res = await _client.post(
       _uri('/log-entries/'),
@@ -340,6 +343,8 @@ class ApiClient {
       body: jsonEncode({
         'entry_type': entryType,
         'note': note,
+        'medicine': medicine,
+        'withdrawal_days': withdrawalDays,
         if (animal != null) 'animal': animal,
         if (occurredOn != null) 'occurred_on': _ymd(occurredOn),
       }),
@@ -353,6 +358,8 @@ class ApiClient {
     required String entryType,
     required String note,
     DateTime? occurredOn,
+    String medicine = '',
+    int? withdrawalDays,
   }) async {
     final res = await _client.patch(
       _uri('/log-entries/$id/'),
@@ -360,11 +367,49 @@ class ApiClient {
       body: jsonEncode({
         'entry_type': entryType,
         'note': note,
+        'medicine': medicine,
+        'withdrawal_days': withdrawalDays,
         if (occurredOn != null) 'occurred_on': _ymd(occurredOn),
       }),
     );
     _check(res);
     return LogEntry.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  // --- Weight log ---------------------------------------------------------
+  /// One animal's weight readings, oldest-first (for the growth trend).
+  Future<List<WeightRecord>> weights(int animalId) async {
+    final res = await _client.get(
+      _uri('/weight-records/', {'animal': animalId}),
+      headers: _headers(),
+    );
+    _check(res);
+    return _decodeList(res).map((e) => WeightRecord.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<WeightRecord> createWeight({
+    required int animal,
+    required double weightKg,
+    DateTime? date,
+    String note = '',
+  }) async {
+    final res = await _client.post(
+      _uri('/weight-records/'),
+      headers: _headers(json: true),
+      body: jsonEncode({
+        'animal': animal,
+        'weight_kg': '$weightKg',
+        if (date != null) 'date': _ymd(date),
+        'note': note,
+      }),
+    );
+    _check(res);
+    return WeightRecord.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteWeight(int id) async {
+    final res = await _client.delete(_uri('/weight-records/$id/'), headers: _headers());
+    _check(res);
   }
 
   Future<void> deleteLogEntry(int id) async {

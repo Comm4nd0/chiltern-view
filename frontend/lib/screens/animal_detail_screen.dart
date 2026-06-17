@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../models/animal.dart';
 import '../models/care_task.dart';
 import '../models/log_entry.dart';
+import '../models/weight_record.dart';
 import '../services/notification_service.dart';
 import '../util/animal_display.dart';
 import '../widgets/animal_sheet.dart';
@@ -65,13 +66,43 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
   List<CareTask> _tasks = [];
   bool _tasksLoading = true;
   String? _tasksError;
+  List<WeightRecord> _weights = [];
+  bool _weightsLoading = true;
+  List<LogEntry> _withdrawals = [];
 
   @override
   void initState() {
     super.initState();
     _loadAnimal();
     _loadTasks();
+    _loadWeights();
+    _loadWithdrawals();
     _loadLog(reset: true);
+  }
+
+  Future<void> _loadWeights() async {
+    try {
+      final weights = await _api.weights(widget.animalId);
+      if (mounted) setState(() {
+        _weights = weights;
+        _weightsLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _weightsLoading = false);
+    }
+  }
+
+  /// Active medication withdrawal periods for this animal, for the food-safety
+  /// banner. Pulled from the animal's recent health entries.
+  Future<void> _loadWithdrawals() async {
+    try {
+      final page = await _api.logEntries(animal: widget.animalId, types: 'health', page: 1);
+      if (mounted) {
+        setState(() => _withdrawals = page.entries.where((e) => e.withdrawalActive).toList());
+      }
+    } catch (_) {
+      // Non-essential; no banner if it can't load.
+    }
   }
 
   Future<void> _loadAnimal() async {
@@ -195,7 +226,19 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
       isScrollControlled: true,
       builder: (_) => _LogEntrySheet(api: _api, animalId: widget.animalId, entry: entry),
     );
-    if (changed == true) _loadLog(reset: true);
+    if (changed == true) {
+      _loadLog(reset: true);
+      _loadWithdrawals(); // a health note may add/clear a withdrawal banner
+    }
+  }
+
+  Future<void> _logWeight() async {
+    final added = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _WeightSheet(api: _api, animalId: widget.animalId),
+    );
+    if (added == true) _loadWeights();
   }
 
   @override
@@ -211,6 +254,8 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
         onRefresh: () async {
           await _loadAnimal();
           await _loadTasks();
+          await _loadWeights();
+          await _loadWithdrawals();
           await _loadLog(reset: true);
         },
         child: ListView(
@@ -218,6 +263,8 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           children: [
             _header(context),
+            for (final w in _withdrawals) _withdrawalBanner(context, w),
+            _weightSection(context),
             _taskSection(context),
             _journal(context),
             const SizedBox(height: 80), // room for the FAB
@@ -271,6 +318,114 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
                   : theme.colorScheme.surfaceContainerHighest,
             ),
             TextButton(onPressed: _editAnimal, child: const Text('Edit')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _withdrawalBanner(BuildContext context, LogEntry entry) {
+    final theme = Theme.of(context);
+    final amber = Colors.orange.shade800;
+    final until = entry.withdrawalUntil;
+    final medicine = entry.medicine.isNotEmpty ? ' (${entry.medicine})' : '';
+    return Card(
+      color: amber.withValues(alpha: 0.10),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.no_food, color: amber, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Don't eat eggs/meat from ${_animal?.name ?? 'this animal'} until "
+                '${until != null ? DateFormat('d MMM y').format(until) : 'further notice'}'
+                '$medicine.',
+                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _weightSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final latest = _weights.isNotEmpty ? _weights.last : null;
+    final previous = _weights.length > 1 ? _weights[_weights.length - 2] : null;
+    final delta = latest != null && previous != null ? latest.weightKg - previous.weightKg : null;
+    String kg(double v) =>
+        v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+    final recent = _weights.reversed.take(6).toList();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(child: Text('Weight', style: theme.textTheme.titleLarge)),
+                FilledButton.tonalIcon(
+                  onPressed: _logWeight,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Log weight'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_weightsLoading)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(
+                    child: SizedBox(
+                        width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+              )
+            else if (latest == null)
+              Text('No weights logged yet.', style: theme.textTheme.bodyMedium)
+            else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  Text('${kg(latest.weightKg)} kg',
+                      style: theme.textTheme.headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 8),
+                  if (delta != null && delta != 0)
+                    Text(
+                      '${delta > 0 ? '▲' : '▼'} ${kg(delta.abs())} kg',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: delta > 0 ? Colors.green.shade700 : Colors.orange.shade800,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  const Spacer(),
+                  Text(DateFormat('d MMM y').format(latest.date),
+                      style: theme.textTheme.bodySmall),
+                ],
+              ),
+              if (recent.length > 1)
+                for (final w in recent.skip(1))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${DateFormat('d MMM y').format(w.date)}'
+                            '${w.note.isNotEmpty ? ' · ${w.note}' : ''}',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ),
+                        Text('${kg(w.weightKg)} kg', style: theme.textTheme.bodyMedium),
+                      ],
+                    ),
+                  ),
+            ],
           ],
         ),
       ),
@@ -459,6 +614,8 @@ class _LogEntrySheet extends StatefulWidget {
 class _LogEntrySheetState extends State<_LogEntrySheet> {
   final _formKey = GlobalKey<FormState>();
   final _note = TextEditingController();
+  final _medicine = TextEditingController();
+  final _withdrawal = TextEditingController();
   String _type = 'general';
   DateTime _occurredOn = DateTime.now();
   bool _saving = false;
@@ -473,18 +630,27 @@ class _LogEntrySheetState extends State<_LogEntrySheet> {
       _note.text = entry.note;
       _type = entry.entryType;
       _occurredOn = entry.occurredOn;
+      _medicine.text = entry.medicine;
+      _withdrawal.text = entry.withdrawalDays?.toString() ?? '';
     }
   }
 
   @override
   void dispose() {
     _note.dispose();
+    _medicine.dispose();
+    _withdrawal.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
+    // Medicine/withdrawal only apply to health entries.
+    final isHealth = _type == 'health';
+    final medicine = isHealth ? _medicine.text.trim() : '';
+    final withdrawal =
+        isHealth && _withdrawal.text.trim().isNotEmpty ? int.tryParse(_withdrawal.text.trim()) : null;
     try {
       if (_editing) {
         await widget.api.updateLogEntry(
@@ -492,6 +658,8 @@ class _LogEntrySheetState extends State<_LogEntrySheet> {
           entryType: _type,
           note: _note.text.trim(),
           occurredOn: _occurredOn,
+          medicine: medicine,
+          withdrawalDays: withdrawal,
         );
       } else {
         await widget.api.createLogEntry(
@@ -499,6 +667,8 @@ class _LogEntrySheetState extends State<_LogEntrySheet> {
           note: _note.text.trim(),
           animal: widget.animalId,
           occurredOn: _occurredOn,
+          medicine: medicine,
+          withdrawalDays: withdrawal,
         );
       }
       if (mounted) Navigator.of(context).pop(true);
@@ -554,6 +724,32 @@ class _LogEntrySheetState extends State<_LogEntrySheet> {
               decoration: const InputDecoration(labelText: 'Note', border: OutlineInputBorder()),
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Write a note' : null,
             ),
+            if (_type == 'health') ...[
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _medicine,
+                decoration: const InputDecoration(
+                  labelText: 'Medicine / treatment (optional)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _withdrawal,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Egg/meat withdrawal (days, optional)',
+                  helperText: "Days produce mustn't be eaten after treatment.",
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) {
+                  final text = v?.trim() ?? '';
+                  if (text.isEmpty) return null;
+                  final n = int.tryParse(text);
+                  return (n == null || n < 0) ? 'Whole number of days' : null;
+                },
+              ),
+            ],
             const SizedBox(height: 12),
             InkWell(
               onTap: () async {
@@ -592,6 +788,120 @@ class _LogEntrySheetState extends State<_LogEntrySheet> {
                       ? const SizedBox(
                           width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                       : Text(_editing ? 'Save' : 'Add'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Log a weight reading for an animal (date + kg + optional note).
+class _WeightSheet extends StatefulWidget {
+  final ApiClient api;
+  final int animalId;
+  const _WeightSheet({required this.api, required this.animalId});
+
+  @override
+  State<_WeightSheet> createState() => _WeightSheetState();
+}
+
+class _WeightSheetState extends State<_WeightSheet> {
+  final _formKey = GlobalKey<FormState>();
+  final _kg = TextEditingController();
+  final _note = TextEditingController();
+  DateTime _date = DateTime.now();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _kg.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      await widget.api.createWeight(
+        animal: widget.animalId,
+        weightKg: double.parse(_kg.text.trim()),
+        date: _date,
+        note: _note.text.trim(),
+      );
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Log weight', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _kg,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Weight (kg)', border: OutlineInputBorder()),
+              validator: (v) {
+                final text = v?.trim() ?? '';
+                if (text.isEmpty) return 'Enter a weight';
+                final n = double.tryParse(text);
+                return (n == null || n < 0) ? 'Enter a number' : null;
+              },
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(DateTime.now().year - 10),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) setState(() => _date = picked);
+              },
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'When', border: OutlineInputBorder()),
+                child: Text(DateFormat('d MMM y').format(_date)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _note,
+              decoration: const InputDecoration(labelText: 'Note (optional)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: 8),
+                FilledButton(
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Save'),
                 ),
               ],
             ),

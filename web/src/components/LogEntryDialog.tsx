@@ -33,6 +33,10 @@ export default function LogEntryDialog({
   const [type, setType] = useState<string>(entry?.entry_type ?? 'general')
   const [note, setNote] = useState(entry?.note ?? '')
   const [occurredOn, setOccurredOn] = useState(entry?.occurred_on ?? todayIso)
+  const [medicine, setMedicine] = useState(entry?.medicine ?? '')
+  const [withdrawalDays, setWithdrawalDays] = useState(
+    entry?.withdrawal_days != null ? String(entry.withdrawal_days) : '',
+  )
   const [error, setError] = useState<string | null>(null)
 
   const busy = create.isPending || update.isPending || remove.isPending
@@ -42,7 +46,20 @@ export default function LogEntryDialog({
       setError('Write a note.')
       return
     }
-    const payload = { entry_type: type, note: note.trim(), occurred_on: occurredOn }
+    // Medicine/withdrawal only make sense on a health entry; clear otherwise.
+    const isHealth = type === 'health'
+    const withdrawal = withdrawalDays.trim() ? Number(withdrawalDays) : null
+    if (isHealth && withdrawal != null && (!Number.isInteger(withdrawal) || withdrawal < 0)) {
+      setError('Withdrawal days must be a whole number.')
+      return
+    }
+    const payload = {
+      entry_type: type,
+      note: note.trim(),
+      occurred_on: occurredOn,
+      medicine: isHealth ? medicine.trim() : '',
+      withdrawal_days: isHealth ? withdrawal : null,
+    }
     try {
       if (editing) await update.mutateAsync({ id: entry.id, patch: payload })
       else await create.mutateAsync({ ...payload, animal: animalId })
@@ -90,6 +107,22 @@ export default function LogEntryDialog({
             onChange={(e) => setOccurredOn(e.target.value)}
             slotProps={{ inputLabel: { shrink: true } }}
           />
+          {type === 'health' && (
+            <>
+              <TextField
+                label="Medicine / treatment (optional)"
+                value={medicine}
+                onChange={(e) => setMedicine(e.target.value)}
+              />
+              <TextField
+                label="Egg/meat withdrawal (days, optional)"
+                type="number"
+                value={withdrawalDays}
+                onChange={(e) => setWithdrawalDays(e.target.value)}
+                helperText="Days produce mustn't be eaten after treatment."
+              />
+            </>
+          )}
           {error && (
             <Typography color="error" variant="body2">
               {error}
