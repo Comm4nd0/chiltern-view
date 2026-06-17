@@ -75,5 +75,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Chiltern View needs access to your photos so you can add a picture to an animal or crop.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Chiltern View needs the camera so you can take a photo of an animal or crop.</string>
 </dict>
 </plist>

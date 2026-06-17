@@ -98,9 +98,14 @@ TIME_ZONE = os.environ.get("DJANGO_TIME_ZONE", "Europe/London")
 USE_I18N = True
 USE_TZ = True
 
-# --- Static files -----------------------------------------------------------
+# --- Static & media files ---------------------------------------------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# User-uploaded photos (animals, crops). In Docker, MEDIA_ROOT is a named volume
+# shared with the web nginx, which serves /media/ directly; in local dev Django
+# serves it (see config/urls.py).
+MEDIA_URL = "/media/"
+MEDIA_ROOT = os.environ.get("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media"))
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {

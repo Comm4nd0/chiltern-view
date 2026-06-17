@@ -305,6 +305,24 @@ class ApiClient {
     _check(res);
   }
 
+  /// Upload (or replace) an animal's photo from a local file path (multipart).
+  Future<Animal> uploadAnimalPhoto(int id, String path) async {
+    final res = await _uploadPhoto('/animals/$id/', path);
+    return Animal.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  /// Shared multipart PATCH that attaches a `photo` file. Returns the raw
+  /// response for the caller to decode into its model.
+  Future<http.Response> _uploadPhoto(String path, String filePath) async {
+    final request = http.MultipartRequest('PATCH', _uri(path));
+    final token = AppConfig.authToken;
+    if (token != null) request.headers['Authorization'] = 'Token $token';
+    request.files.add(await http.MultipartFile.fromPath('photo', filePath));
+    final res = await http.Response.fromStream(await _client.send(request));
+    _check(res);
+    return res;
+  }
+
   Future<Animal> animal(int id) async {
     final res = await _client.get(_uri('/animals/$id/'), headers: _headers());
     _check(res);
@@ -511,6 +529,12 @@ class ApiClient {
   Future<void> deleteCrop(int id) async {
     final res = await _client.delete(_uri('/crops/$id/'), headers: _headers());
     _check(res);
+  }
+
+  /// Upload (or replace) a crop's photo from a local file path (multipart).
+  Future<Crop> uploadCropPhoto(int id, String path) async {
+    final res = await _uploadPhoto('/crops/$id/', path);
+    return Crop.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
   /// Record a harvest. The backend also retires the crop's auto watering and

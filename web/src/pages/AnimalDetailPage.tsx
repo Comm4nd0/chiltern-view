@@ -141,9 +141,18 @@ export default function AnimalDetailPage() {
                   <IconButton onClick={() => navigate('/animals')} aria-label="Back to animals">
                     <ArrowBackIcon />
                   </IconButton>
-                  <Typography sx={{ fontSize: 36, lineHeight: 1 }}>
-                    {SPECIES_EMOJI[animal.species] ?? '🐾'}
-                  </Typography>
+                  {animal.photo ? (
+                    <Box
+                      component="img"
+                      src={animal.photo}
+                      alt={animal.name}
+                      sx={{ width: 56, height: 56, borderRadius: 2, objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <Typography sx={{ fontSize: 36, lineHeight: 1 }}>
+                      {SPECIES_EMOJI[animal.species] ?? '🐾'}
+                    </Typography>
+                  )}
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="h6" noWrap>
                       {animal.name}

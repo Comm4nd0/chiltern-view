@@ -38,6 +38,7 @@ class Animal(models.Model):
     name = models.CharField(max_length=100)
     species = models.CharField(max_length=20, choices=Species.choices, default=Species.CHICKEN)
     breed = models.CharField(max_length=100, blank=True)
+    photo = models.ImageField(upload_to="animals/", null=True, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
     acquired_on = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
@@ -503,6 +504,7 @@ class Crop(models.Model):
 
     crop = models.CharField(max_length=50, help_text="Catalog key, e.g. 'carrots'.")
     variety = models.CharField(max_length=120, blank=True)
+    photo = models.ImageField(upload_to="crops/", null=True, blank=True)
     planted_on = models.DateField(default=timezone.localdate)
     quantity = models.PositiveIntegerField(null=True, blank=True, help_text="Number planted/sown.")
     bed = models.CharField(max_length=120, blank=True, help_text="Bed / row / location.")

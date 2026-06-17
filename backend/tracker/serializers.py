@@ -16,7 +16,7 @@ class AnimalSerializer(serializers.ModelSerializer):
         model = Animal
         fields = [
             "id", "name", "species", "species_display", "breed",
-            "date_of_birth", "acquired_on", "notes", "active",
+            "date_of_birth", "acquired_on", "notes", "active", "photo",
             "created_at", "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
@@ -135,7 +135,7 @@ class CropSerializer(serializers.ModelSerializer):
         model = Crop
         fields = [
             "id", "crop", "crop_label", "family", "family_label", "variety",
-            "planted_on", "quantity", "bed",
+            "planted_on", "quantity", "bed", "photo",
             "expected_harvest", "harvested_on", "yield_kg", "notes",
             "estimated_harvest", "current_stage", "progress", "stages",
             "created_at", "updated_at",

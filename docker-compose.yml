@@ -41,6 +41,9 @@ services:
   backend:
     build: ./backend
     environment: *backend-environment
+    volumes:
+      # User-uploaded photos, shared with the web nginx that serves /media/.
+      - media:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -75,6 +78,9 @@ services:
 
   web:
     build: ./web
+    volumes:
+      # Read-only view of the uploaded photos so nginx can serve /media/ directly.
+      - media:/var/www/media:ro
     depends_on:
       - backend
     ports:
@@ -83,3 +89,4 @@ services:
 
 volumes:
   pgdata:
+  media:

@@ -12,7 +12,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { useQueryClient } from '@tanstack/react-query'
 import { useCreateAnimal, useUpdateAnimal } from '../api/hooks'
+import { api } from '../api/client'
 import type { Animal } from '../api/types'
 import { SPECIES } from '../animals'
 
@@ -26,13 +28,16 @@ export default function AnimalDialog({
   const editing = animal != null
   const create = useCreateAnimal()
   const update = useUpdateAnimal()
+  const qc = useQueryClient()
   const [name, setName] = useState(animal?.name ?? '')
   const [species, setSpecies] = useState(animal?.species ?? 'chicken')
   const [breed, setBreed] = useState(animal?.breed ?? '')
   const [active, setActive] = useState(animal?.active ?? true)
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const busy = create.isPending || update.isPending
+  const busy = create.isPending || update.isPending || uploading
 
   const save = async () => {
     if (!name.trim()) {
@@ -40,17 +45,27 @@ export default function AnimalDialog({
       return
     }
     try {
+      let id = animal?.id
       if (editing) {
         await update.mutateAsync({
           id: animal.id,
           patch: { name: name.trim(), species, breed: breed.trim(), active },
         })
       } else {
-        await create.mutateAsync({ name: name.trim(), species, breed: breed.trim() })
+        const created = await create.mutateAsync({ name: name.trim(), species, breed: breed.trim() })
+        id = created.id
+      }
+      if (photo && id != null) {
+        setUploading(true)
+        await api.uploadAnimalPhoto(id, photo)
+        qc.invalidateQueries({ queryKey: ['animals'] })
+        qc.invalidateQueries({ queryKey: ['overview'] })
       }
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -79,6 +94,15 @@ export default function AnimalDialog({
             ))}
           </TextField>
           <TextField label="Breed (optional)" value={breed} onChange={(e) => setBreed(e.target.value)} />
+          <Button component="label" variant="outlined" size="small" sx={{ alignSelf: 'flex-start' }}>
+            {photo ? `Photo: ${photo.name}` : animal?.photo ? 'Replace photo' : 'Add photo'}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+            />
+          </Button>
           {editing && (
             <FormControlLabel
               control={<Switch checked={active} onChange={(e) => setActive(e.target.checked)} />}

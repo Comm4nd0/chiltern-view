@@ -11,6 +11,8 @@ export interface Animal {
   breed: string
   date_of_birth: string | null
   active: boolean
+  /** Absolute URL of the animal's photo, or null. */
+  photo: string | null
 }
 
 export interface AuthUser {
@@ -60,6 +62,8 @@ export interface Crop {
   id: number
   crop: string
   crop_label: string
+  /** Absolute URL of the crop's photo, or null. */
+  photo: string | null
   /** Botanical family code (e.g. 'solanaceae'); null for an unknown crop. */
   family: string | null
   family_label: string | null

@@ -24,7 +24,16 @@ export default function CropCard({
         aria-label={onEdit ? `Edit ${crop.crop_label}` : undefined}
       >
         <Stack direction="row" alignItems="center" spacing={1}>
-          <Plant size={18} weight="fill" color="#34C759" />
+          {crop.photo ? (
+            <Box
+              component="img"
+              src={crop.photo}
+              alt={crop.crop_label}
+              sx={{ width: 28, height: 28, borderRadius: 1, objectFit: 'cover' }}
+            />
+          ) : (
+            <Plant size={18} weight="fill" color="#34C759" />
+          )}
           <Typography variant="subtitle1" fontWeight={600} sx={{ flex: 1 }}>
             {crop.crop_label}
           </Typography>

@@ -81,6 +81,9 @@ them.**
 - Host ports, chosen to avoid conflicts with existing services: web nginx
   **8007**, backend **8009**. Always check `ss -tln` before picking ports.
 - Secrets live in `/root/chiltern-view/.env` on the server (not in git).
+- **Uploaded photos** (animals, crops) live on the `media` Docker volume, shared
+  between the backend (writes `/app/media`) and the web nginx, which serves
+  `/media/` from it directly. The volume persists across redeploys.
 - Redeploy: `cd /root/chiltern-view && git pull && docker compose up -d --build`.
 - **Caddy** is the container `caddy-caddy-1`; config at `/root/caddy/Caddyfile`.
   Each site reverse-proxies to the Docker host gateway `172.17.0.1:<host-port>`.

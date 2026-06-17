@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../api/api_client.dart';
@@ -300,8 +301,15 @@ class _CropSheetState extends State<_CropSheet> {
   late DateTime _plantedOn;
   DateTime? _expectedHarvest;
   bool _saving = false;
+  String? _photoPath;
 
   bool get _editing => widget.crop != null;
+
+  Future<void> _pickPhoto() async {
+    final picked =
+        await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    if (picked != null) setState(() => _photoPath = picked.path);
+  }
 
   @override
   void initState() {
@@ -384,6 +392,7 @@ class _CropSheetState extends State<_CropSheet> {
     setState(() => _saving = true);
     try {
       final quantity = _quantity.text.trim().isEmpty ? null : int.parse(_quantity.text.trim());
+      int id;
       if (_editing) {
         await widget.api.updateCrop(
           widget.crop!.id,
@@ -395,8 +404,9 @@ class _CropSheetState extends State<_CropSheet> {
           expectedHarvest: _expectedHarvest,
           notes: _notes.text.trim(),
         );
+        id = widget.crop!.id;
       } else {
-        await widget.api.createCrop(
+        final created = await widget.api.createCrop(
           crop: _crop!,
           variety: _variety.text.trim(),
           plantedOn: _plantedOn,
@@ -405,6 +415,10 @@ class _CropSheetState extends State<_CropSheet> {
           expectedHarvest: _expectedHarvest,
           notes: _notes.text.trim(),
         );
+        id = created.id;
+      }
+      if (_photoPath != null) {
+        await widget.api.uploadCropPhoto(id, _photoPath!);
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -553,6 +567,17 @@ class _CropSheetState extends State<_CropSheet> {
                 decoration: const InputDecoration(
                   labelText: 'Notes (optional)',
                   border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: _saving ? null : _pickPhoto,
+                  icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                  label: Text(_photoPath != null
+                      ? 'Photo selected'
+                      : (widget.crop?.photo != null ? 'Replace photo' : 'Add photo')),
                 ),
               ),
               const SizedBox(height: 16),

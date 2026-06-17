@@ -33,9 +33,19 @@ class CropCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Icon(PhosphorIcons.plant(PhosphorIconsStyle.fill),
-                      size: 18, color: const Color(0xFF34C759)),
-                  const SizedBox(width: 8),
+                  if (crop.photo != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.network(crop.photo!, width: 28, height: 28, fit: BoxFit.cover),
+                      ),
+                    )
+                  else ...[
+                    Icon(PhosphorIcons.plant(PhosphorIconsStyle.fill),
+                        size: 18, color: const Color(0xFF34C759)),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     child: Text(crop.cropLabel, style: theme.textTheme.titleMedium),
                   ),

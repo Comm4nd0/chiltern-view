@@ -6,6 +6,7 @@ class Animal {
   final String breed;
   final DateTime? dateOfBirth;
   final bool active;
+  final String? photo;
 
   Animal({
     required this.id,
@@ -15,6 +16,7 @@ class Animal {
     required this.breed,
     this.dateOfBirth,
     this.active = true,
+    this.photo,
   });
 
   factory Animal.fromJson(Map<String, dynamic> json) {
@@ -27,6 +29,7 @@ class Animal {
       breed: json['breed'] as String? ?? '',
       dateOfBirth: (dob == null || dob.isEmpty) ? null : DateTime.tryParse(dob),
       active: json['active'] as bool? ?? true,
+      photo: json['photo'] as String?,
     );
   }
 

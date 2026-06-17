@@ -11,7 +11,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+import { useQueryClient } from '@tanstack/react-query'
 import { useBeds, useCreateCrop, useCropCatalog, useDeleteCrop, useUpdateCrop } from '../api/hooks'
+import { api } from '../api/client'
 import type { Crop } from '../api/types'
 
 /** Add a new crop planting, or edit/delete an existing one when `crop` is given. */
@@ -28,8 +30,10 @@ export default function AddCropDialog({
   const deleteCrop = useDeleteCrop()
   const catalog = useCropCatalog()
   const beds = useBeds()
+  const qc = useQueryClient()
   const todayIso = new Date().toISOString().slice(0, 10)
 
+  const [photo, setPhoto] = useState<File | null>(null)
   const [crop, setCrop] = useState(existing?.crop ?? '')
   const [variety, setVariety] = useState(existing?.variety ?? '')
   const [plantedOn, setPlantedOn] = useState(existing?.planted_on ?? todayIso)
@@ -76,8 +80,13 @@ export default function AddCropDialog({
       notes: notes.trim(),
     }
     try {
+      let id = existing?.id
       if (editing) await updateCrop.mutateAsync({ id: existing.id, patch: payload })
-      else await createCrop.mutateAsync(payload)
+      else id = ((await createCrop.mutateAsync(payload)) as Crop).id
+      if (photo && id != null) {
+        await api.uploadCropPhoto(id, photo)
+        qc.invalidateQueries({ queryKey: ['crops'] })
+      }
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save.')
@@ -150,6 +159,15 @@ export default function AddCropDialog({
             slotProps={{ inputLabel: { shrink: true } }}
             helperText="Leave blank to estimate from the crop's usual season."
           />
+          <Button component="label" variant="outlined" size="small" sx={{ alignSelf: 'flex-start' }}>
+            {photo ? `Photo: ${photo.name}` : existing?.photo ? 'Replace photo' : 'Add photo'}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+            />
+          </Button>
           <TextField
             label="Notes (optional)"
             value={notes}

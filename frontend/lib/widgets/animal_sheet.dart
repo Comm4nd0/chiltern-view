@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../api/api_client.dart';
 import '../models/animal.dart';
@@ -22,8 +23,15 @@ class _AnimalSheetState extends State<AnimalSheet> {
   String _species = 'chicken';
   bool _active = true;
   bool _saving = false;
+  String? _photoPath;
 
   bool get _editing => widget.animal != null;
+
+  Future<void> _pickPhoto() async {
+    final picked =
+        await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    if (picked != null) setState(() => _photoPath = picked.path);
+  }
 
   @override
   void initState() {
@@ -48,6 +56,7 @@ class _AnimalSheetState extends State<AnimalSheet> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
+      int id;
       if (_editing) {
         await widget.api.updateAnimal(
           widget.animal!.id,
@@ -56,12 +65,17 @@ class _AnimalSheetState extends State<AnimalSheet> {
           breed: _breed.text.trim(),
           active: _active,
         );
+        id = widget.animal!.id;
       } else {
-        await widget.api.createAnimal(
+        final created = await widget.api.createAnimal(
           name: _name.text.trim(),
           species: _species,
           breed: _breed.text.trim(),
         );
+        id = created.id;
+      }
+      if (_photoPath != null) {
+        await widget.api.uploadAnimalPhoto(id, _photoPath!);
       }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -107,6 +121,17 @@ class _AnimalSheetState extends State<AnimalSheet> {
               decoration: const InputDecoration(
                 labelText: 'Breed (optional)',
                 border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton.icon(
+                onPressed: _saving ? null : _pickPhoto,
+                icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                label: Text(_photoPath != null
+                    ? 'Photo selected'
+                    : (widget.animal?.photo != null ? 'Replace photo' : 'Add photo')),
               ),
             ),
             if (_editing)

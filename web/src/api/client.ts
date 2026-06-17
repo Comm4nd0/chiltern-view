@@ -67,6 +67,25 @@ export async function downloadExport(dataset: string): Promise<void> {
   URL.revokeObjectURL(url)
 }
 
+/** Upload a photo to a record via multipart PATCH. Lets the browser set the
+ * multipart boundary (so no Content-Type override here). */
+export async function uploadPhoto(path: string, file: File): Promise<void> {
+  const token = getToken()
+  const form = new FormData()
+  form.append('photo', file)
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'PATCH',
+    headers: token ? { Authorization: `Token ${token}` } : {},
+    body: form,
+  })
+  if (res.status === 401) {
+    clearAuth()
+    queryClient.clear()
+    throw new Error('Unauthorized')
+  }
+  if (!res.ok) throw new Error(`Upload failed (${res.status})`)
+}
+
 // DRF list endpoints are paginated ({ results: [...] }); custom actions are not.
 function decodeList<T>(data: unknown): T[] {
   if (data && typeof data === 'object' && 'results' in data) {
@@ -185,6 +204,7 @@ export const api = {
     patch: { name?: string; species?: string; breed?: string; active?: boolean },
   ) => request<Animal>(`/animals/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteAnimal: (id: number) => request<void>(`/animals/${id}/`, { method: 'DELETE' }),
+  uploadAnimalPhoto: (id: number, file: File) => uploadPhoto(`/animals/${id}/`, file),
 
   crops: (show = 'growing') =>
     request<unknown>(`/crops/timeline/?show=${show}`).then(decodeList<Crop>),
@@ -196,6 +216,7 @@ export const api = {
   updateCrop: (id: number, patch: UpdateCropInput) =>
     request<Crop>(`/crops/${id}/`, { method: 'PATCH', body: JSON.stringify(patch) }),
   deleteCrop: (id: number) => request<void>(`/crops/${id}/`, { method: 'DELETE' }),
+  uploadCropPhoto: (id: number, file: File) => uploadPhoto(`/crops/${id}/`, file),
   // Marking harvested also retires the crop's auto watering/harvest reminders.
   harvestCrop: (id: number, input: HarvestCropInput) =>
     request<Crop>(`/crops/${id}/harvest/`, { method: 'POST', body: JSON.stringify(input) }),

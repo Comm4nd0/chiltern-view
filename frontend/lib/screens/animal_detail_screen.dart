@@ -299,7 +299,13 @@ class _AnimalDetailScreenState extends State<AnimalDetailScreen> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Text(speciesEmoji[animal.species] ?? '🐾', style: const TextStyle(fontSize: 36)),
+            if (animal.photo != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(animal.photo!, width: 56, height: 56, fit: BoxFit.cover),
+              )
+            else
+              Text(speciesEmoji[animal.species] ?? '🐾', style: const TextStyle(fontSize: 36)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

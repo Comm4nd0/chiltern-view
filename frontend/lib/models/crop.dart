@@ -16,6 +16,7 @@ class Crop {
   final int id;
   final String crop;
   final String cropLabel;
+  final String? photo;
   final String? family;
   final String? familyLabel;
   final String variety;
@@ -35,6 +36,7 @@ class Crop {
     required this.id,
     required this.crop,
     required this.cropLabel,
+    this.photo,
     this.family,
     this.familyLabel,
     required this.variety,
@@ -55,6 +57,7 @@ class Crop {
         id: json['id'] as int,
         crop: json['crop'] as String? ?? '',
         cropLabel: json['crop_label'] as String? ?? '',
+        photo: json['photo'] as String?,
         family: json['family'] as String?,
         familyLabel: json['family_label'] as String?,
         variety: json['variety'] as String? ?? '',
