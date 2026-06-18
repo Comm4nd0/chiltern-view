@@ -5,8 +5,9 @@ import '../api/api_client.dart';
 import '../auth_state.dart';
 import '../config.dart';
 
-/// Username/password sign-in. On success it persists the token (via the API
-/// client) and flips [signedIn] so RootGate swaps in the app shell.
+/// Username/password sign-in, shown as a dismissable modal over the read-only
+/// app. On success it persists the token, flips [signedIn] (unlocking write
+/// controls), and pops itself.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -41,7 +42,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (AppConfig.myPersonId == null && user.personId != null) {
         await AppConfig.setMyPersonId(user.personId);
       }
-      signedIn.value = true; // RootGate swaps in the app shell
+      signedIn.value = true; // unlocks write controls behind the modal
+      if (mounted) Navigator.of(context).pop(); // close the sign-in modal
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -56,6 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      appBar: AppBar(title: const Text('Sign in')),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -83,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Sign in to continue',
+                  'Browsing is open to everyone — sign in to add, edit or delete.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.onSurfaceVariant),

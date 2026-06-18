@@ -102,21 +102,26 @@ them.**
   (zero-downtime). Afterwards, verify the existing sites still serve.
 - DNS: `chilternview.lumatechsolutions.co.uk` must A-record to `178.104.29.66`
   for Caddy to issue HTTPS.
-- **Security:** the API now requires **per-user login** (DRF
-  `TokenAuthentication`). Every endpoint needs an `Authorization: Token <key>`
-  header except `GET /api/health/` (the Docker healthcheck) and
-  `POST /api/auth/login/`. Each household user (Marco, Claire) is an `auth.User`
+- **Security — read-only mode (DRF `IsAuthenticatedOrReadOnly`):** reading is
+  **public** (anyone can browse `GET`s, no login); **creating, editing or
+  deleting needs a token** (`Authorization: Token <key>`). Exceptions:
+  `GET /api/health/` and `POST /api/auth/login/` are fully open; `GET
+  /api/auth/me/` and the `GET /api/export/...` CSV backups require a token even
+  though they're GETs. Each household user (Marco, Claire) is an `auth.User`
   linked to a `Person` (`Person.user`); create the accounts in **Django admin**
   (`/admin/`) — the `DJANGO_SUPERUSER_*` env bootstrap makes the first admin.
-  Tokens are issued on login and revoked on sign-out; both clients persist the
-  token (web `localStorage`, Flutter `shared_preferences`), send it on every
-  request, and drop to the login screen on a `401`. Auth endpoints:
-  `POST /api/auth/login/`, `POST /api/auth/logout/`, `GET /api/auth/me/`.
+  Both clients show the app **read-only when signed out** and prompt sign-in when
+  a write is attempted (web: a login dialog; mobile: a login modal). Tokens are
+  issued on login and revoked on sign-out; clients persist the token (web
+  `localStorage`, Flutter `shared_preferences`) and send it on every request.
+  Auth endpoints: `POST /api/auth/login/`, `POST /api/auth/logout/`,
+  `GET /api/auth/me/`.
 
 ## Conventions
-- Backend requires login (DRF token auth; **internet-facing via Caddy** — see the
-  security note above). "people" are lightweight name records, each optionally
-  linked to an `auth.User` for login (`Person.user`).
+- Backend is **read-only without login**; writes need a token (DRF
+  `IsAuthenticatedOrReadOnly`; **internet-facing via Caddy** — see the security
+  note above). "people" are lightweight name records, each optionally linked to
+  an `auth.User` for login (`Person.user`).
 - Keep `flutter analyze` clean and `flutter test` green before committing.
 - The Flutter UI mirrors the backend's computed fields (overdue ranking, potato
   stages, egg counter); match existing style when extending.

@@ -25,6 +25,41 @@ function emit() {
   listeners.forEach((l) => l())
 }
 
+// --- Sign-in prompt -------------------------------------------------------
+// Read-only mode shows the whole app signed-out; a write (or the user tapping
+// "Sign in") opens the login dialog via this little store.
+let promptOpen = false
+const promptListeners = new Set<() => void>()
+
+function emitPrompt() {
+  promptListeners.forEach((l) => l())
+}
+
+export function requireLogin(): void {
+  if (!promptOpen) {
+    promptOpen = true
+    emitPrompt()
+  }
+}
+
+export function dismissLogin(): void {
+  if (promptOpen) {
+    promptOpen = false
+    emitPrompt()
+  }
+}
+
+/** Reactive flag: whether the sign-in dialog should be shown. */
+export function useLoginPrompt(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      promptListeners.add(l)
+      return () => promptListeners.delete(l)
+    },
+    () => promptOpen,
+  )
+}
+
 export function getToken(): string | null {
   return token
 }
@@ -38,6 +73,7 @@ export function setAuth(newToken: string, newUser: AuthUser): void {
   user = newUser
   localStorage.setItem(TOKEN_KEY, newToken)
   localStorage.setItem(USER_KEY, JSON.stringify(newUser))
+  dismissLogin() // signed in now — close any open prompt
   emit()
 }
 

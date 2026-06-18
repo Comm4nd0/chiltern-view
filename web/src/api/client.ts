@@ -16,8 +16,7 @@ import type {
   Supply,
   WeightRecord,
 } from './types'
-import { clearAuth, getToken } from './auth'
-import { queryClient } from '../queryClient'
+import { clearAuth, getToken, requireLogin } from './auth'
 
 // Same-origin in production (nginx proxies /api to the backend); the Vite dev
 // server proxies /api too. Override with VITE_API_BASE if ever needed.
@@ -35,10 +34,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     },
   })
   if (res.status === 401) {
-    // Token missing, expired, or revoked: drop it so the app falls back to login.
+    // Read-only mode: a 401 means this write needs sign-in. Drop any stale token
+    // and open the sign-in dialog; keep the (public) read cache so the page the
+    // user is browsing stays put.
     clearAuth()
-    queryClient.clear()
-    throw new Error('Unauthorized')
+    requireLogin()
+    throw new Error('Please sign in to make changes.')
   }
   if (!res.ok) {
     const body = await res.text()
@@ -55,6 +56,11 @@ export async function downloadExport(dataset: string): Promise<void> {
   const res = await fetch(`${BASE}/export/${dataset}/`, {
     headers: token ? { Authorization: `Token ${token}` } : {},
   })
+  if (res.status === 401) {
+    clearAuth()
+    requireLogin()
+    throw new Error('Please sign in to export.')
+  }
   if (!res.ok) throw new Error(`Export failed (${res.status})`)
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
@@ -80,8 +86,8 @@ export async function uploadPhoto(path: string, file: File): Promise<void> {
   })
   if (res.status === 401) {
     clearAuth()
-    queryClient.clear()
-    throw new Error('Unauthorized')
+    requireLogin()
+    throw new Error('Please sign in to make changes.')
   }
   if (!res.ok) throw new Error(`Upload failed (${res.status})`)
 }

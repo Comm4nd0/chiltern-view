@@ -13,17 +13,38 @@ import 'screens/settings_screen.dart';
 import 'services/notification_service.dart';
 import 'theme.dart';
 
+/// True while the login modal is on screen, so a burst of 401s doesn't stack
+/// multiple copies of it.
+bool _loginPrompting = false;
+
+/// Show the sign-in screen as a dismissable modal (read-only mode: the app
+/// stays visible behind it).
+Future<void> promptLogin() async {
+  if (_loginPrompting) return;
+  final nav = navigatorKey.currentState;
+  if (nav == null) return;
+  _loginPrompting = true;
+  try {
+    await nav.push(MaterialPageRoute<void>(
+      builder: (_) => const LoginScreen(),
+      fullscreenDialog: true,
+    ));
+  } finally {
+    _loginPrompting = false;
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppConfig.load();
   signedIn.value = AppConfig.isSignedIn;
   await NotificationService.instance.init();
-  // On any 401 from an authenticated request: drop credentials, pop back to the
-  // root, and let RootGate show the login screen.
+  // Read-only mode: reads are public, so a 401 means a write needs sign-in.
+  // Drop any stale token and open the login modal over the still-visible app.
   ApiClient.onUnauthorized = () {
     AppConfig.clearAuth();
     signedIn.value = false;
-    navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    promptLogin();
   };
   runApp(const ChilternViewApp());
 }
@@ -43,18 +64,12 @@ class ChilternViewApp extends StatelessWidget {
   }
 }
 
-/// Swaps between the login screen and the app shell as auth state changes.
+/// Read-only mode: the app shell is always shown, signed in or not.
 class RootGate extends StatelessWidget {
   const RootGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: signedIn,
-      builder: (context, isSignedIn, _) =>
-          isSignedIn ? const HomeShell() : const LoginScreen(),
-    );
-  }
+  Widget build(BuildContext context) => const HomeShell();
 }
 
 class HomeShell extends StatefulWidget {
@@ -117,6 +132,21 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       appBar: AppBar(
         title: Text(_titles[_index]),
         actions: [
+          // Read-only mode: offer sign-in when signed out.
+          ValueListenableBuilder<bool>(
+            valueListenable: signedIn,
+            builder: (context, isSignedIn, _) => isSignedIn
+                ? const SizedBox.shrink()
+                : TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const LoginScreen(),
+                        fullscreenDialog: true,
+                      ),
+                    ),
+                    child: const Text('Sign in'),
+                  ),
+          ),
           IconButton(
             icon: Icon(PhosphorIcons.gear()),
             tooltip: 'Settings',

@@ -53,10 +53,13 @@ Health check: `GET /api/health/`. The web app is then at `http://luma001:8080`.
 
 ## Authentication
 
-The API requires a login (DRF **token auth**). Every endpoint needs an
-`Authorization: Token <key>` header except `GET /api/health/` and
-`POST /api/auth/login/`. There's no sign-up — the household accounts are created
-by hand:
+The API runs in **read-only mode** (DRF `IsAuthenticatedOrReadOnly`): anyone can
+**read** (`GET`) without logging in, but **creating, editing or deleting** needs
+a token (`Authorization: Token <key>`). `GET /api/health/` and
+`POST /api/auth/login/` are fully open; `GET /api/auth/me/` and the
+`GET /api/export/...` CSV backups require a token despite being GETs. Both apps
+show the data read-only when signed out and prompt sign-in on a write. There's no
+sign-up — the household accounts are created by hand:
 
 1. Ensure an admin exists (the `DJANGO_SUPERUSER_*` env vars create one on first
    container boot, or run `python manage.py createsuperuser`).
@@ -68,7 +71,8 @@ by hand:
 Endpoints: `POST /api/auth/login/` `{username, password}` → `{token, user}`;
 `POST /api/auth/logout/` (revokes the token); `GET /api/auth/me/`. Both apps store
 the token (browser `localStorage` / `shared_preferences`), send it on every
-request, and return to the login screen on a `401`.
+request, and prompt sign-in (rather than blocking the whole app) when a write
+returns `401`.
 
 ## Run the backend locally (no Docker)
 

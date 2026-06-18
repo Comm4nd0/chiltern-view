@@ -1,10 +1,11 @@
-"""Tests for token authentication: the API is locked down except health/login."""
+"""Tests for token auth in read-only mode: reads are public, writes need a token
+(plus `me` and the CSV export, which stay sign-in only)."""
 from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 
-from .models import Person
+from .models import Animal, Person
 
 
 class AuthTests(APITestCase):
@@ -17,24 +18,45 @@ class AuthTests(APITestCase):
         res = self.client.get("/api/health/")
         self.assertEqual(res.status_code, status.HTTP_200_OK)
 
-    def test_endpoints_require_auth(self):
-        # Includes the endpoints Home Assistant reads (overview, crop board): the
-        # API is internet-facing, so HA authenticates with a token like any client.
+    def test_reads_are_public(self):
+        # Read-only mode: browsing data needs no login. Includes the endpoints
+        # Home Assistant reads (overview, crop board).
         for path in (
             "/api/animals/",
             "/api/care-tasks/",
             "/api/overview/",
             "/api/crops/board/",
             "/api/egg-records/",
-            "/api/auth/me/",
         ):
+            res = self.client.get(path)
+            self.assertEqual(res.status_code, status.HTTP_200_OK, path)
+
+    def test_me_and_export_still_require_auth(self):
+        # `me` (whoami) and the bulk CSV export stay sign-in only even though
+        # they're GETs.
+        for path in ("/api/auth/me/", "/api/export/animals/", "/api/export/"):
             res = self.client.get(path)
             self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED, path)
 
     def test_writes_require_auth(self):
-        """The HA add-egg / complete-task write commands need a token too."""
-        res = self.client.post("/api/egg-records/increment/", {"count": 1})
-        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+        animal = Animal.objects.create(name="Gertie", species="goat")
+        # Create / edit / delete and the custom write actions all need a token.
+        self.assertEqual(
+            self.client.post("/api/egg-records/increment/", {"count": 1}).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(
+            self.client.post("/api/animals/", {"name": "Billy", "species": "goat"}).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(
+            self.client.patch(f"/api/animals/{animal.id}/", {"breed": "Saanen"}).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
+        self.assertEqual(
+            self.client.delete(f"/api/animals/{animal.id}/").status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )
 
     def test_login_returns_token_and_linked_person(self):
         res = self.client.post(
@@ -50,10 +72,11 @@ class AuthTests(APITestCase):
         res = self.client.post("/api/auth/login/", {"username": "marco", "password": "nope"})
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_token_grants_access_and_me(self):
+    def test_token_grants_write_and_me(self):
         token = Token.objects.create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
-        self.assertEqual(self.client.get("/api/animals/").status_code, status.HTTP_200_OK)
+        res = self.client.post("/api/animals/", {"name": "Billy", "species": "goat"})
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
         me = self.client.get("/api/auth/me/")
         self.assertEqual(me.status_code, status.HTTP_200_OK)
         self.assertEqual(me.data["person_name"], "Marco")
@@ -62,5 +85,8 @@ class AuthTests(APITestCase):
         token = Token.objects.create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION=f"Token {token.key}")
         self.assertEqual(self.client.post("/api/auth/logout/").status_code, status.HTTP_204_NO_CONTENT)
-        # The same token is now dead.
-        self.assertEqual(self.client.get("/api/animals/").status_code, status.HTTP_401_UNAUTHORIZED)
+        # The token is now dead: a write with it is rejected (reads stay public).
+        self.assertEqual(
+            self.client.post("/api/animals/", {"name": "Nope", "species": "goat"}).status_code,
+            status.HTTP_401_UNAUTHORIZED,
+        )

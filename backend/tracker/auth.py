@@ -8,8 +8,8 @@ linked to a :class:`~tracker.models.Person` (see ``Person.user``).
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.decorators import api_view
-from rest_framework.permissions import AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 
@@ -51,6 +51,8 @@ def logout(request):
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def me(request):
-    """Who am I? Lets a client validate a stored token on startup."""
+    """Who am I? Lets a client validate a stored token on startup. Requires auth
+    (a GET, but it must 401 for guests so the client knows it's signed out)."""
     return Response(user_payload(request.user))

@@ -6,6 +6,7 @@ import '../config.dart';
 import '../models/person.dart';
 import '../services/notification_service.dart';
 import 'export_screen.dart';
+import 'login_screen.dart';
 import 'supplies_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -117,8 +118,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _signOut() async {
     await _api.logout();
-    signedIn.value = false; // RootGate swaps in the login screen
-    if (mounted) Navigator.of(context).pop(); // pop Settings to reveal it
+    signedIn.value = false; // read-only mode: the app shell stays, write controls re-lock
+    if (mounted) Navigator.of(context).pop(); // pop Settings back to the app
   }
 
   @override
@@ -131,16 +132,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           Text('Account', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          if (AppConfig.authUsername != null)
-            Text('Signed in as ${AppConfig.authUsername}.', style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: _signOut,
-              icon: const Icon(Icons.logout),
-              label: const Text('Sign out'),
-            ),
+          ValueListenableBuilder<bool>(
+            valueListenable: signedIn,
+            builder: (context, isSignedIn, _) => isSignedIn
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (AppConfig.authUsername != null)
+                        Text('Signed in as ${AppConfig.authUsername}.',
+                            style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _signOut,
+                        icon: const Icon(Icons.logout),
+                        label: const Text('Sign out'),
+                      ),
+                    ],
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Browsing read-only. Sign in to add, edit or delete.',
+                          style: theme.textTheme.bodyMedium),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const LoginScreen(),
+                            fullscreenDialog: true,
+                          ),
+                        ),
+                        child: const Text('Sign in'),
+                      ),
+                    ],
+                  ),
           ),
           const Divider(height: 32),
           Text('Holding', style: theme.textTheme.titleMedium),

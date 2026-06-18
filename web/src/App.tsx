@@ -3,6 +3,7 @@ import {
   Box,
   BottomNavigation,
   BottomNavigationAction,
+  Button,
   Container,
   IconButton,
   Paper,
@@ -20,8 +21,8 @@ import EggLogPage from './pages/EggLogPage'
 import SettingsPage from './pages/SettingsPage'
 import ActivityPage from './pages/ActivityPage'
 import SuppliesPage from './pages/SuppliesPage'
-import LoginPage from './pages/LoginPage'
-import { useAuth } from './api/auth'
+import LoginDialog from './components/LoginDialog'
+import { dismissLogin, requireLogin, useAuth, useLoginPrompt } from './api/auth'
 
 const tabs = [
   { label: 'Home', path: '/', icon: House },
@@ -43,6 +44,7 @@ const titles: Record<string, string> = {
 
 export default function App() {
   const { token } = useAuth()
+  const loginOpen = useLoginPrompt()
   const location = useLocation()
   const navigate = useNavigate()
   // Nested pages (e.g. /animals/3) keep their section's tab highlighted.
@@ -52,11 +54,11 @@ export default function App() {
   const title =
     titles[location.pathname] ?? (location.pathname.startsWith('/animals/') ? 'Animal' : 'Chiltern View')
 
-  // Not signed in → the login screen replaces the whole shell.
-  if (!token) return <LoginPage />
-
+  // Read-only mode: the app always renders. Signed out, write controls prompt
+  // sign-in; the header shows a "Sign in" button.
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
+      {loginOpen && <LoginDialog onClose={dismissLogin} />}
       {/* iOS-style translucent large-title header */}
       <AppBar
         position="sticky"
@@ -73,6 +75,11 @@ export default function App() {
           <Typography variant="h5" sx={{ flex: 1, fontWeight: 800 }}>
             {title}
           </Typography>
+          {!token && (
+            <Button size="small" onClick={() => requireLogin()} sx={{ mr: 0.5 }}>
+              Sign in
+            </Button>
+          )}
           <IconButton
             component={Link}
             to="/settings"

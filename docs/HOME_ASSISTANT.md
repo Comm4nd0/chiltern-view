@@ -23,13 +23,15 @@ and use it everywhere in `chiltern_view.yaml`:
 - `http://<luma001-ip>:8007` — LAN, via the web nginx.
 - `http://<luma001-ip>:8009` — LAN, straight to the backend.
 
-The API requires a **login token** (it's internet-facing via Caddy, so it isn't
-left open). Home Assistant authenticates exactly like the web and mobile apps:
-it sends an `Authorization: Token <key>` header, already wired onto every
-`rest:` resource and `rest_command:` in `chiltern_view.yaml` via
-`!secret chiltern_view_token`.
+The API runs in **read-only mode**: reading data is public, so the `rest:`
+**sensors work with no token at all**. Only the **write commands**
+(`rest_command.chiltern_add_egg`, `chiltern_complete_task`) need one. The bundled
+`chiltern_view.yaml` puts the `Authorization: Token <key>` header (via
+`!secret chiltern_view_token`) on everything — which is fine — but you can delete
+it from the two `rest:` resources if you only want the read-only dashboard and
+don't care about the add-egg / complete-task buttons.
 
-To set it up:
+To enable the write buttons, set up a token:
 
 1. **Create a token.** In Django admin (`/admin/`), add a user for Home Assistant
    (e.g. `home-assistant`) — or reuse an existing account — then create a token

@@ -136,13 +136,15 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.TokenAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
-    # The API is internet-facing (via Caddy), so it is locked down by default:
-    # every endpoint needs a token except the few that opt out with AllowAny
-    # (health probe, login). Clients send `Authorization: Token <key>` and drop
-    # to the login screen on a 401. Home Assistant authenticates with a token too
-    # — see docs/HOME_ASSISTANT.md.
+    # The API is internet-facing (via Caddy). Reads are public (read-only mode —
+    # browse without logging in); creating, editing or deleting anything needs a
+    # token. A few endpoints opt out (health + login are fully open; `me`, the
+    # logout, and the CSV export require auth even though they're GETs). Clients
+    # show the app read-only and prompt sign-in when a write is attempted.
+    # Home Assistant's read sensors work without a token; its add-egg / complete-
+    # task commands (POSTs) still need one — see docs/HOME_ASSISTANT.md.
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
 }
 

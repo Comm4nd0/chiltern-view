@@ -23,7 +23,7 @@ import { useNavigate } from 'react-router-dom'
 import InventoryIcon from '@mui/icons-material/Inventory2Outlined'
 import { useCreatePerson, useDeletePerson, usePeople } from '../api/hooks'
 import { setMyPersonId, useMyPersonId } from '../config'
-import { clearAuth, useAuth } from '../api/auth'
+import { clearAuth, requireLogin, useAuth } from '../api/auth'
 import { api, downloadExport } from '../api/client'
 import { queryClient } from '../queryClient'
 import QueryBoundary from '../components/QueryBoundary'
@@ -100,7 +100,7 @@ export default function SettingsPage() {
   const myId = useMyPersonId()
   const createPerson = useCreatePerson()
   const deletePerson = useDeletePerson()
-  const { user } = useAuth()
+  const { token, user } = useAuth()
   const [name, setName] = useState('')
   const [exportError, setExportError] = useState<string | null>(null)
 
@@ -126,18 +126,35 @@ export default function SettingsPage() {
   return (
     <Stack spacing={2}>
       <Typography variant="h6">Account</Typography>
-      <Typography variant="body2" color="text.secondary">
-        Signed in as {user?.username ?? '…'}.
-      </Typography>
-      <Button
-        variant="outlined"
-        color="error"
-        startIcon={<LogoutIcon />}
-        onClick={signOut}
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        Sign out
-      </Button>
+      {token ? (
+        <>
+          <Typography variant="body2" color="text.secondary">
+            Signed in as {user?.username ?? '…'}.
+          </Typography>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<LogoutIcon />}
+            onClick={signOut}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Sign out
+          </Button>
+        </>
+      ) : (
+        <>
+          <Typography variant="body2" color="text.secondary">
+            Browsing read-only. Sign in to add, edit or delete.
+          </Typography>
+          <Button
+            variant="contained"
+            onClick={() => requireLogin()}
+            sx={{ alignSelf: 'flex-start' }}
+          >
+            Sign in
+          </Button>
+        </>
+      )}
       <Divider />
 
       <Typography variant="h6">People</Typography>

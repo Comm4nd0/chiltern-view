@@ -6,7 +6,8 @@ a downloadable CSV. Read-only; requires a token like every other endpoint.
 import csv
 
 from django.http import Http404, HttpResponse
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .models import Animal, Crop, EggRecord, LogEntry, Supply, WeightRecord
@@ -63,8 +64,12 @@ DATASETS = {
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def export_csv(request, dataset):
-    """Download one dataset as CSV. ``dataset`` is one of DATASETS' keys."""
+    """Download one dataset as CSV. ``dataset`` is one of DATASETS' keys.
+
+    Sign-in only: a full CSV backup of everything is an admin/backup function,
+    kept behind auth even though browsing the data in the app is public."""
     builder = DATASETS.get(dataset)
     if builder is None:
         raise Http404("Unknown dataset")
@@ -77,6 +82,7 @@ def export_csv(request, dataset):
 
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def export_index(request):
-    """List the datasets a client can export, for the export UI."""
+    """List the datasets a client can export, for the export UI (sign-in only)."""
     return Response({"datasets": sorted(DATASETS)})
